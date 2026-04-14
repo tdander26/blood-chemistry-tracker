@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood Chemistry PDF to Sheets</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --accent: #10b981;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success-bg: #ecfdf5;
+            --success-text: #065f46;
+            --error-bg: #fef2f2;
+            --error-text: #991b1b;
+            --info-bg: #eff6ff;
+            --info-text: #1e40af;
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .app-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .app-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            letter-spacing: -0.5px;
+        }
+
+        .app-header p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 24px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title i { color: var(--primary); }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+            background: var(--bg);
+            color: var(--text);
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .form-group input[readonly] {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        .form-group .hint {
+            font-size: 11px;
+            color: var(--accent);
+            margin-top: 4px;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--primary);
+            background: var(--info-bg);
+        }
+
+        .upload-zone i {
+            font-size: 28px;
+            color: var(--primary);
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .upload-zone span {
+            font-size: 13px;
+            color: var(--text-muted);
+            display: block;
+        }
+
+        .upload-zone .filename {
+            color: var(--primary);
+            font-weight: 600;
+            margin-top: 6px;
+            font-size: 12px;
+        }
+
+        .upload-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-dark);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 1.5px solid var(--primary);
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            background: var(--info-bg);
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .status-bar {
+            margin-top: 16px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .status-bar.show { display: flex; }
+        .status-bar.success { background: var(--success-bg); color: var(--success-text); }
+        .status-bar.error { background: var(--error-bg); color: var(--error-text); }
+        .status-bar.info { background: var(--info-bg); color: var(--info-text); }
+        .status-bar.info .fa-spinner { animation: spin 1s linear infinite; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .results-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .patient-banner {
+            background: linear-gradient(135deg, var(--primary), #7c3aed);
+            color: white;
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            display: none;
+        }
+
+        .patient-banner.show { display: block; }
+
+        .patient-banner h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .patient-meta {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .patient-meta span i {
+            margin-right: 4px;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+        }
+
+        .section-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: var(--bg);
+            padding: 10px 16px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--primary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .test-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .test-row:last-child { border-bottom: none; }
+
+        .test-name {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .test-value {
+            font-weight: 700;
+            color: var(--text);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .test-row.flagged .test-value { color: var(--error-text); }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            color: var(--border);
+            margin-bottom: 16px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        .stat-bar {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+        }
+
+        .stat {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .stat strong {
+            color: var(--text);
+            font-size: 16px;
+            display: block;
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Setup Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            max-width: 640px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 32px;
+        }
+
+        .modal h2 {
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+
+        .modal ol {
+            padding-left: 20px;
+            line-height: 2;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .modal ol li {
+            margin-bottom: 8px;
+        }
+
+        .modal pre {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 12px;
+            overflow-x: auto;
+            margin: 16px 0;
+            line-height: 1.5;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .modal .btn {
+            margin-top: 16px;
+        }
+
+        .copy-toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--text);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 2000;
+            pointer-events: none;
+        }
+
+        .copy-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-header">
+        <h1>Blood Chemistry PDF to Sheets</h1>
+        <p>Upload a Labcorp PDF, review extracted values, then push to Google Sheets</p>
+        <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Developed by Todd Anderson DC, MS</p>
+    </div>
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-link"></i> Google Sheets</div>
+                <div class="form-group">
+                    <label>Template Sheet ID</label>
+                    <input type="text" id="templateSheetId" value="" placeholder="Paste your template Sheet ID here">
+                    <div class="hint"><i class="fas fa-info-circle"></i> The ID from your template spreadsheet URL</div>
+                </div>
+                <div class="form-group">
+                    <label>Sheet Tab Name</label>
+                    <input type="text" id="sheetTabName" value="Blood Chemistry">
+                </div>
+                <div class="form-group">
+                    <label>Apps Script Web App URL</label>
+                    <input type="text" id="appsScriptUrl" value="" placeholder="Paste your Apps Script /exec URL here">
+                    <div class="hint"><i class="fas fa-info-circle"></i> <a href="#" onclick="showSetupModal(); return false;" style="color: var(--primary);">Setup guide (2 min)</a></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><i class="fas fa-file-medical"></i> Upload PDF</div>
+                <div class="upload-zone" id="uploadZone">
+                    <i class="fas fa-cloud-arrow-up"></i>
+                    <span>Drop your PDF here or click to browse</span>
+                    <div class="filename" id="fileName"></div>
+                    <input type="file" id="pdfFile" accept=".pdf">
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="extractPDF()" id="extractBtn">
+                        <i class="fas fa-magnifying-glass-chart"></i> Extract Data
+                    </button>
+                    <button class="btn btn-primary" onclick="pushViaAppsScript()" id="pushBtn" disabled style="background: #10b981;">
+                        <i class="fas fa-cloud-arrow-up"></i> Push to Google Sheets
+                    </button>
+                    <button class="btn btn-outline" onclick="copyToClipboard()" id="copyBtn" disabled>
+                        <i class="fas fa-clipboard"></i> Copy All Values
+                    </button>
+                </div>
+
+                <div class="status-bar" id="status"></div>
+
+                <div class="stat-bar" id="statBar" style="display: none;">
+                    <div class="stat"><strong id="statCount">0</strong>tests found</div>
+                    <div class="stat"><strong id="statPages">0</strong>pages</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="results-panel">
+            <div class="patient-banner" id="patientBanner">
+                <h3 id="patientName">Patient Name</h3>
+                <div class="patient-meta">
+                    <span><i class="fas fa-calendar"></i> <span id="patientDate">-</span></span>
+                    <span><i class="fas fa-user"></i> Age <span id="patientAge">-</span></span>
+                    <span><i class="fas fa-venus-mars"></i> <span id="patientSex">-</span></span>
+                </div>
+            </div>
+
+            <div class="results-grid" id="resultsGrid">
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <i class="fas fa-flask-vial"></i>
+                    <p>Upload a PDF and click <strong>Extract Data</strong> to begin</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Setup Modal -->
+    <div class="modal-overlay" id="setupModal">
+        <div class="modal">
+            <h2>Apps Script Setup (2 minutes)</h2>
+            <ol>
+                <li>Go to <a href="https://script.google.com" target="_blank">script.google.com</a> and click <strong>New project</strong> (or open your existing project)</li>
+                <li>Delete any existing code and paste the script below</li>
+                <li>Click <strong>Deploy &rarr; New deployment</strong></li>
+                <li>Type = <strong>Web app</strong>, Execute as = <strong>Me</strong>, Access = <strong>Anyone</strong></li>
+                <li>Click <strong>Deploy</strong>, then authorize when prompted</li>
+                <li>Copy the <strong>Web app URL</strong> and paste it into the field on this page</li>
+            </ol>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;"><strong>Important:</strong> If you update the script, you must create a <strong>New deployment</strong> (not "Manage deployments") for changes to take effect.</p>
+            <pre id="appsScriptCode">function doPost(e) {
+  try {
+    var raw;
+    if (e.parameter &amp;&amp; e.parameter.payload) {
+      raw = e.parameter.payload;
+    } else if (e.postData &amp;&amp; e.postData.contents) {
+      raw = e.postData.contents;
+    }
+    var data = JSON.parse(raw);
+
+    var templateFile = DriveApp.getFileById(data.templateId);
+    var newFile = templateFile.makeCopy(data.newSheetName);
+    var newSs = SpreadsheetApp.openById(newFile.getId());
+    var sheet = newSs.getSheetByName(data.sheetTabName || 'Blood Chemistry');
+
+    if (!sheet) {
+      return HtmlService.createHtmlOutput(
+        '&lt;html&gt;&lt;body style="font-family:system-ui;text-align:center;padding:60px 20px;"&gt;' +
+        '&lt;h2 style="color:#991b1b;"&gt;Sheet Tab Not Found&lt;/h2&gt;' +
+        '&lt;p&gt;Could not find a tab named "' + (data.sheetTabName || 'Blood Chemistry') + '"&lt;/p&gt;' +
+        '&lt;/body&gt;&lt;/html&gt;'
+      );
+    }
+
+    var updates = data.updates || [];
+    for (var i = 0; i &lt; updates.length; i++) {
+      sheet.getRange(updates[i].cell).setValue(updates[i].value);
+    }
+    SpreadsheetApp.flush();
+
+    var pdfUrl = '';
+    try {
+      var ssId = newSs.getId();
+      var sheetId = sheet.getSheetId();
+      var pdfExportUrl = 'https://docs.google.com/spreadsheets/d/' + ssId +
+        '/export?format=pdf&amp;gid=' + sheetId +
+        '&amp;size=letter&amp;portrait=true&amp;fitw=true' +
+        '&amp;sheetnames=false&amp;printtitle=false&amp;pagenumbers=false' +
+        '&amp;gridlines=false&amp;fzr=false';
+      var token = ScriptApp.getOAuthToken();
+      var response = UrlFetchApp.fetch(pdfExportUrl, {
+        headers: { 'Authorization': 'Bearer ' + token },
+        muteHttpExceptions: true
+      });
+      if (response.getResponseCode() === 200) {
+        var pdfBlob = response.getBlob().setName(data.newSheetName + '.pdf');
+        var folders = DriveApp.getFoldersByName('Blood Chemistry Reports');
+        var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder('Blood Chemistry Reports');
+        pdfUrl = folder.createFile(pdfBlob).getUrl();
+      }
+    } catch (pdfErr) {
+      console.error('PDF export failed: ' + pdfErr.message);
+    }
+
+    var pdfLink = pdfUrl
+      ? '&lt;p style="margin-top:12px;"&gt;&lt;a href="' + pdfUrl + '" style="color:#2563eb;font-size:13px;"&gt;View saved PDF in Drive&lt;/a&gt;&lt;/p&gt;'
+      : '';
+
+    return HtmlService.createHtmlOutput(
+      '&lt;html&gt;&lt;body style="font-family:system-ui;text-align:center;padding:60px 20px;"&gt;' +
+      '&lt;div style="font-size:48px;margin-bottom:16px;"&gt;&#x2705;&lt;/div&gt;' +
+      '&lt;h2 style="color:#065f46;"&gt;Spreadsheet Created!&lt;/h2&gt;' +
+      '&lt;p style="color:#333;margin:12px 0;"&gt;&lt;strong&gt;' + data.newSheetName + '&lt;/strong&gt;&lt;/p&gt;' +
+      '&lt;p style="color:#666;"&gt;' + updates.length + ' values populated&lt;/p&gt;' +
+      '&lt;a href="' + newSs.getUrl() + '" style="display:inline-block;margin-top:20px;padding:12px 32px;background:#2563eb;color:white;text-decoration:none;border-radius:8px;font-weight:600;"&gt;Open Spreadsheet&lt;/a&gt;' +
+      pdfLink +
+      '&lt;p style="margin-top:20px;color:#999;font-size:12px;"&gt;You can close this tab when done&lt;/p&gt;' +
+      '&lt;/body&gt;&lt;/html&gt;'
+    );
+  } catch(err) {
+    return HtmlService.createHtmlOutput(
+      '&lt;html&gt;&lt;body style="font-family:system-ui;text-align:center;padding:60px 20px;"&gt;' +
+      '&lt;h2 style="color:#991b1b;"&gt;Error&lt;/h2&gt;' +
+      '&lt;p style="color:#666;"&gt;' + err.message + '&lt;/p&gt;' +
+      '&lt;/body&gt;&lt;/html&gt;'
+    );
+  }
+}
+
+function doGet(e) {
+  return ContentService.createTextOutput(
+    JSON.stringify({status: 'ok'})
+  ).setMimeType(ContentService.MimeType.JSON);
+}</pre>
+            <button class="btn btn-primary" onclick="copyScriptCode()">
+                <i class="fas fa-copy"></i> Copy Script Code
+            </button>
+            <button class="btn btn-outline" onclick="document.getElementById('setupModal').classList.remove('show')" style="margin-top: 8px;">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <div class="copy-toast" id="copyToast">Copied!</div>
+
+    <script>
+        // =====================================================================
+        // LABCORP PDF TEST NAME → SPREADSHEET ROW MAPPING
+        // Built from actual PDF + spreadsheet analysis
+        // =====================================================================
+        const TEST_MAP = {
+            // CBC + Differential
+            'Hemoglobin':               { row: 7,  section: 'CBC + Differential' },
+            'Hematocrit':               { row: 8,  section: 'CBC + Differential' },
+            'RBC':                      { row: 9,  section: 'CBC + Differential' },
+            'MCV':                      { row: 10, section: 'CBC + Differential' },
+            'MCH':                      { row: 11, section: 'CBC + Differential' },
+            'MCHC':                     { row: 12, section: 'CBC + Differential' },
+            'RDW':                      { row: 13, section: 'CBC + Differential' },
+            'Platelets':                { row: 14, section: 'CBC + Differential' },
+            'WBC':                      { row: 15, section: 'CBC + Differential' },
+            'Neutrophils':              { row: 16, section: 'CBC + Differential' },
+            'Lymphs':                   { row: 17, section: 'CBC + Differential' },
+            'Monocytes':                { row: 18, section: 'CBC + Differential' },
+            'Eos':                      { row: 19, section: 'CBC + Differential' },
+            'Basos':                    { row: 20, section: 'CBC + Differential' },
+            'Neutrophils (Absolute)':   { row: 21, section: 'CBC + Differential' },
+            'Lymphs (Absolute)':        { row: 22, section: 'CBC + Differential' },
+            'Monocytes(Absolute)':      { row: 23, section: 'CBC + Differential' },
+            'Eos (Absolute)':           { row: 24, section: 'CBC + Differential' },
+            'Baso (Absolute)':          { row: 25, section: 'CBC + Differential' },
+            'Immature Granulocytes':    { row: 26, section: 'CBC + Differential' },
+            'Immature Grans (Abs)':     { row: 27, section: 'CBC + Differential' },
+
+            // Glycemic
+            'Glucose':                  { row: 30, section: 'Metabolic Panel' },
+            'Hemoglobin A1c':           { row: 31, section: 'Metabolic Panel' },
+            'Insulin':                  { row: 32, section: 'Metabolic Panel' },
+
+            // Lipid
+            'Cholesterol, Total':       { row: 35, section: 'Lipid Panel' },
+            'Triglycerides':            { row: 36, section: 'Lipid Panel' },
+            'LDL Chol Calc (NIH)':      { row: 37, section: 'Lipid Panel' },
+            'HDL Cholesterol':          { row: 38, section: 'Lipid Panel' },
+            'VLDL Cholesterol Cal':     { row: 40, section: 'Lipid Panel' },
+
+            // Protein
+            'Protein, Total':           { row: 42, section: 'Metabolic Panel' },
+            'Albumin':                  { row: 43, section: 'Metabolic Panel' },
+            'Globulin, Total':          { row: 44, section: 'Metabolic Panel' },
+
+            // Nitrogen / Kidney
+            'eGFR':                     { row: 47, section: 'Metabolic Panel' },
+            'Uric Acid':               { row: 49, section: 'Metabolic Panel' },
+            'BUN':                      { row: 50, section: 'Metabolic Panel' },
+            'Creatinine':               { row: 51, section: 'Metabolic Panel' },
+            'BUN/Creatinine Ratio':     { row: 52, section: 'Metabolic Panel' },
+
+            // Liver Markers
+            'AST (SGOT)':              { row: 54, section: 'Liver Markers' },
+            'ALT (SGPT)':              { row: 55, section: 'Liver Markers' },
+            'GGT':                      { row: 56, section: 'Liver Markers' },
+            'LDH':                      { row: 57, section: 'Liver Markers' },
+            'Alkaline Phosphatase':     { row: 58, section: 'Liver Markers' },
+            'Bilirubin, Total':         { row: 59, section: 'Liver Markers' },
+            'Bilirubin, Direct':        { row: 60, section: 'Liver Markers' },
+            'Bilirubin, Indirect':      { row: 61, section: 'Liver Markers' },
+
+            // Ions
+            'Sodium':                   { row: 63, section: 'Ions / Minerals' },
+            'Potassium':                { row: 64, section: 'Ions / Minerals' },
+            'Chloride':                 { row: 65, section: 'Ions / Minerals' },
+            'Carbon Dioxide, Total':    { row: 66, section: 'Ions / Minerals' },
+            'Calcium':                  { row: 68, section: 'Ions / Minerals' },
+            'Magnesium':                { row: 69, section: 'Ions / Minerals' },
+            'Phosphorus':               { row: 70, section: 'Ions / Minerals' },
+
+            // Iron
+            'Iron':                     { row: 72, section: 'Iron Panel' },
+            'Ferritin':                 { row: 73, section: 'Iron Panel' },
+            'Iron Bind.Cap.(TIBC)':     { row: 74, section: 'Iron Panel' },
+            'UIBC':                     { row: 75, section: 'Iron Panel' },
+            'Transferrin':              { row: 77, section: 'Iron Panel' },
+
+            // D-FLAME
+            'Vitamin D, 25-Hydroxy':    { row: 79, section: 'D-FLAME' },
+            'Homocyst(e)ine':           { row: 80, section: 'D-FLAME' },
+            'C-Reactive Protein, Cardiac': { row: 81, section: 'D-FLAME' },
+
+            // Thyroid
+            'TSH':                      { row: 83, section: 'Thyroid' },
+            'Thyroxine (T4)':           { row: 84, section: 'Thyroid' },
+            'T3 Uptake':                { row: 85, section: 'Thyroid' },
+            'Free Thyroxine Index':     { row: 86, section: 'Thyroid' },
+            'Triiodothyronine (T3)':    { row: 87, section: 'Thyroid' },
+            'Triiodothyronine (T3), Free': { row: 88, section: 'Thyroid' },
+            'T4,Free(Direct)':          { row: 89, section: 'Thyroid' },
+            'Reverse T3, Serum':        { row: 90, section: 'Thyroid' },
+            'Thyroid Peroxidase (TPO) Ab': { row: 91, section: 'Thyroid' },
+            'Thyroglobulin Antibody':   { row: 92, section: 'Thyroid' },
+            'Thyroxine Binding Globulin': { row: 93, section: 'Thyroid' },
+
+            // Additional
+            'ANA by IFA Rfx Titer/Pattern': { row: 99, section: 'Additional' },
+        };
+
+        // Tests that return text values (e.g. Positive/Negative) instead of numbers
+        const TEXT_VALUE_TESTS = new Set([
+            'ANA by IFA Rfx Titer/Pattern'
+        ]);
+
+        let extractedData = null;
+        let patientInfo = null;
+
+        // File upload handling
+        const fileInput = document.getElementById('pdfFile');
+        const uploadZone = document.getElementById('uploadZone');
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files[0]) {
+                document.getElementById('fileName').textContent = fileInput.files[0].name;
+            }
+        });
+
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) {
+                fileInput.files = e.dataTransfer.files;
+                document.getElementById('fileName').textContent = e.dataTransfer.files[0].name;
+            }
+        });
+
+        // =====================================================================
+        // PDF EXTRACTION (position-aware using PDF.js)
+        // =====================================================================
+        async function extractPDF() {
+            if (!fileInput.files[0]) {
+                showStatus('Select a PDF file first', 'error');
+                return;
+            }
+
+            showStatus('<i class="fas fa-spinner"></i> Extracting data from PDF...', 'info');
+
+            try {
+                const arrayBuffer = await fileInput.files[0].arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+                document.getElementById('statPages').textContent = pdf.numPages;
+
+                // Extract all text items with positions from all pages
+                const allItems = [];
+                for (let p = 1; p <= pdf.numPages; p++) {
+                    const page = await pdf.getPage(p);
+                    const content = await page.getTextContent();
+                    const viewport = page.getViewport({ scale: 1 });
+
+                    content.items.forEach(item => {
+                        const x = item.transform[4];
+                        const y = viewport.height - item.transform[5]; // flip y
+                        const text = item.str.trim();
+                        if (text) {
+                            allItems.push({ x, y, text, page: p });
+                        }
+                    });
+                }
+
+                // Group items into rows (items with similar y-coordinate)
+                allItems.sort((a, b) => (a.page - b.page) * 10000 + (a.y - b.y) || a.x - b.x);
+
+                const rows = [];
+                let currentRow = [allItems[0]];
+
+                for (let i = 1; i < allItems.length; i++) {
+                    const item = allItems[i];
+                    const prev = currentRow[currentRow.length - 1];
+
+                    // Same row if same page and y within 3px
+                    if (item.page === prev.page && Math.abs(item.y - prev.y) < 3) {
+                        currentRow.push(item);
+                    } else {
+                        rows.push(currentRow);
+                        currentRow = [item];
+                    }
+                }
+                rows.push(currentRow);
+
+                // Parse patient info and test results from rows
+                patientInfo = { name: '', date: '', age: '', sex: '' };
+                const results = {};
+
+                for (const row of rows) {
+                    row.sort((a, b) => a.x - b.x);
+                    const fullText = row.map(r => r.text).join(' ');
+
+                    // Patient info — Labcorp names are Title Case e.g. "Wuebbeling, Cheryl B"
+                    // Check each individual PDF text item for an exact name match (Lastname, Firstname [Initial]).
+                    // Using item.text with ^ and $ prevents partial matches against addresses/other text.
+                    if (!patientInfo.name && row.length > 0) {
+                        for (const item of row) {
+                            // Matches Title Case: first letter uppercase, 2+ more letters, comma, space, same pattern
+                            // State abbreviations (OH, MO, MN etc.) are only 2 chars and won't match [a-zA-Z]{2,}
+                            const nameMatch = item.text.match(/^([A-Z][a-zA-Z]{2,},\s*[A-Z][a-zA-Z]{2,}(?:\s+[A-Z]\.?)?)$/);
+                            if (nameMatch && !fullText.includes('Physician') && !fullText.includes('©')) {
+                                // Ensure Title Case (handles edge cases where PDF may use ALL CAPS)
+                                patientInfo.name = nameMatch[1].trim().replace(/\b\w+/g, w => w.charAt(0) + w.slice(1).toLowerCase());
+                                break;
+                            }
+                        }
+                    }
+
+                    if (fullText.includes('Date Collected:')) {
+                        const m = fullText.match(/Date Collected:\s*([0-9/]+)/);
+                        if (m) patientInfo.date = m[1];
+                    }
+
+                    if (fullText.includes('Age:')) {
+                        const m = fullText.match(/Age:\s*(\d+)/);
+                        if (m) patientInfo.age = m[1];
+                    }
+
+                    if (fullText.includes('Sex:')) {
+                        const m = fullText.match(/Sex:\s*(Male|Female|M|F)/i);
+                        if (m) patientInfo.sex = m[1].charAt(0).toUpperCase();
+                    }
+
+                    // Test result rows: test name on left (x < 180), value next (x 180-350)
+                    if (row.length >= 2) {
+                        const leftItems = row.filter(r => r.x < 180);
+                        const valueItems = row.filter(r => r.x >= 180 && r.x < 350);
+
+                        if (leftItems.length > 0 && valueItems.length > 0) {
+                            let testName = leftItems.map(r => r.text).join(' ');
+                            const rawValue = valueItems[0].text;
+
+                            // Clean test name: remove trailing " 01", " 02", etc.
+                            testName = testName.replace(/\s+\d{2}$/, '').trim();
+
+                            // Skip headers and non-test rows
+                            if (testName === 'Test' || testName.includes('Current Result') ||
+                                testName.includes('Previous Result') || testName.includes('Date') ||
+                                testName.includes('Patient') || testName.includes('Specimen') ||
+                                testName.includes('Account') || testName.includes('Ordering') ||
+                                testName.includes('©') || testName.includes('Page') ||
+                                testName.includes('DOB') || testName.includes('Fasting') ||
+                                testName.includes('Ordered Items') || testName.includes('Clinical') ||
+                                testName.includes('General Comments')) {
+                                continue;
+                            }
+
+                            // Look up test name in our mapping
+                            const mapping = TEST_MAP[testName];
+                            const isNumericValue = rawValue.match(/^[<>]?[\d.]+$/);
+                            const isTextValue = TEXT_VALUE_TESTS.has(testName) && rawValue.match(/^[A-Za-z][A-Za-z\s\-\/\.]*$/);
+                            if (mapping && (isNumericValue || isTextValue)) {
+                                results[testName] = {
+                                    value: rawValue,
+                                    row: mapping.row,
+                                    section: mapping.section,
+                                    cell: `D${mapping.row}`
+                                };
+                            }
+                        }
+                    }
+                }
+
+                extractedData = results;
+
+                // Update UI
+                displayResults(results);
+                displayPatient(patientInfo);
+
+                const count = Object.keys(results).length;
+                document.getElementById('statCount').textContent = count;
+                document.getElementById('statBar').style.display = 'flex';
+                document.getElementById('pushBtn').disabled = false;
+                document.getElementById('copyBtn').disabled = false;
+
+                showStatus(`<i class="fas fa-check-circle"></i> Found <strong>${count} tests</strong> from ${pdf.numPages} pages`, 'success');
+
+            } catch (err) {
+                console.error(err);
+                showStatus(`<i class="fas fa-times-circle"></i> Error: ${err.message}`, 'error');
+            }
+        }
+
+        function displayPatient(info) {
+            const banner = document.getElementById('patientBanner');
+            // Show banner as long as we have any patient info — not just when name was found
+            if (info.name || info.date || info.age || info.sex) {
+                document.getElementById('patientName').textContent = info.name || 'Name not found';
+                document.getElementById('patientDate').textContent = info.date || '-';
+                document.getElementById('patientAge').textContent = info.age || '-';
+                document.getElementById('patientSex').textContent = info.sex === 'F' ? 'Female' : info.sex === 'M' ? 'Male' : '-';
+                banner.classList.add('show');
+            }
+        }
+
+        function displayResults(results) {
+            const grid = document.getElementById('resultsGrid');
+
+            // Group by section
+            const sections = {};
+            for (const [name, data] of Object.entries(results)) {
+                if (!sections[data.section]) sections[data.section] = [];
+                sections[data.section].push({ name, ...data });
+            }
+
+            let html = '';
+            for (const [sectionName, tests] of Object.entries(sections)) {
+                html += `<div class="section-card">
+                    <div class="section-header">${sectionName}</div>`;
+                tests.sort((a, b) => a.row - b.row);
+                for (const test of tests) {
+                    html += `<div class="test-row">
+                        <span class="test-name">${test.name}</span>
+                        <span class="test-value">${test.value}</span>
+                    </div>`;
+                }
+                html += '</div>';
+            }
+
+            grid.innerHTML = html || '<div class="empty-state"><p>No matching tests found in PDF</p></div>';
+        }
+
+        // =====================================================================
+        // PUSH VIA GOOGLE APPS SCRIPT (form POST to new tab – no CORS!)
+        // =====================================================================
+        function pushViaAppsScript() {
+            if (!extractedData || Object.keys(extractedData).length === 0) {
+                showStatus('<i class="fas fa-exclamation-circle"></i> Extract data first', 'error');
+                return;
+            }
+
+            const url = document.getElementById('appsScriptUrl').value.trim();
+            if (!url) {
+                showStatus('<i class="fas fa-exclamation-circle"></i> Paste your Apps Script URL first. <a href="#" onclick="showSetupModal(); return false;" style="color: var(--info-text); text-decoration: underline;">Setup guide</a>', 'error');
+                return;
+            }
+
+            const spreadsheetId = document.getElementById('templateSheetId').value;
+            const sheetName = document.getElementById('sheetTabName').value;
+            const newName = `${patientInfo.name || 'Patient'} ${patientInfo.date || new Date().toISOString().split('T')[0]}`.substring(0, 100);
+
+            // Build update list
+            const updates = [];
+            if (patientInfo.name) updates.push({ cell: 'B2', value: patientInfo.name });
+            if (patientInfo.date) updates.push({ cell: 'B3', value: patientInfo.date });
+            if (patientInfo.age)  updates.push({ cell: 'E2', value: patientInfo.age });
+            if (patientInfo.sex)  updates.push({ cell: 'I2', value: patientInfo.sex });
+
+            for (const [name, data] of Object.entries(extractedData)) {
+                updates.push({ cell: `D${data.row}`, value: data.value });
+            }
+
+            const payload = JSON.stringify({
+                templateId: spreadsheetId,
+                sheetTabName: sheetName,
+                newSheetName: newName,
+                updates: updates
+            });
+
+            // Create a temporary form that opens result in a new tab
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = url;
+            form.target = '_blank';   // opens the result page in a new tab
+            form.style.display = 'none';
+
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'payload';
+            input.value = payload;
+            form.appendChild(input);
+
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+
+            const count = Object.keys(extractedData).length;
+            showStatus(
+                `<i class="fas fa-check-circle"></i> Sending ${count} values — check the <strong>new tab</strong> that just opened for your spreadsheet link!`,
+                'success'
+            );
+        }
+
+        // =====================================================================
+        // CLIPBOARD COPY (instant fallback)
+        // =====================================================================
+        function copyToClipboard() {
+            if (!extractedData) return;
+
+            let text = `Patient: ${patientInfo.name || '-'}\n`;
+            text += `Date: ${patientInfo.date || '-'}\n`;
+            text += `Age: ${patientInfo.age || '-'}\n`;
+            text += `Sex: ${patientInfo.sex || '-'}\n\n`;
+            text += `Cell\tTest Name\tValue\n`;
+            text += `${'─'.repeat(50)}\n`;
+
+            // Patient info cells
+            if (patientInfo.name) text += `B2\tPatient Name\t${patientInfo.name}\n`;
+            if (patientInfo.date) text += `B3\tDate Collected\t${patientInfo.date}\n`;
+            if (patientInfo.age)  text += `E2\tAge\t${patientInfo.age}\n`;
+            if (patientInfo.sex)  text += `I2\tSex\t${patientInfo.sex}\n`;
+
+            text += `\n`;
+
+            const sorted = Object.entries(extractedData).sort((a, b) => a[1].row - b[1].row);
+            for (const [name, data] of sorted) {
+                text += `D${data.row}\t${name}\t${data.value}\n`;
+            }
+
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Copied all values to clipboard!');
+            });
+        }
+
+        // =====================================================================
+        // HELPERS
+        // =====================================================================
+        function showSetupModal() {
+            document.getElementById('setupModal').classList.add('show');
+        }
+
+        function copyScriptCode() {
+            const code = `function doPost(e) {
+  try {
+    var raw;
+    if (e.parameter && e.parameter.payload) {
+      raw = e.parameter.payload;
+    } else if (e.postData && e.postData.contents) {
+      raw = e.postData.contents;
+    }
+    var data = JSON.parse(raw);
+
+    var templateFile = DriveApp.getFileById(data.templateId);
+    var newFile = templateFile.makeCopy(data.newSheetName);
+    var newSs = SpreadsheetApp.openById(newFile.getId());
+    var sheet = newSs.getSheetByName(data.sheetTabName || 'Blood Chemistry');
+
+    if (!sheet) {
+      return HtmlService.createHtmlOutput(
+        '<html><body style="font-family:system-ui;text-align:center;padding:60px 20px;">' +
+        '<h2 style="color:#991b1b;">Sheet Tab Not Found</h2>' +
+        '<p>Could not find a tab named "' + (data.sheetTabName || 'Blood Chemistry') + '"</p>' +
+        '</body></html>'
+      );
+    }
+
+    var updates = data.updates || [];
+    for (var i = 0; i < updates.length; i++) {
+      sheet.getRange(updates[i].cell).setValue(updates[i].value);
+    }
+    SpreadsheetApp.flush();
+
+    var pdfUrl = '';
+    try {
+      var ssId = newSs.getId();
+      var sheetId = sheet.getSheetId();
+      var pdfExportUrl = 'https://docs.google.com/spreadsheets/d/' + ssId +
+        '/export?format=pdf&gid=' + sheetId +
+        '&size=letter&portrait=true&fitw=true' +
+        '&sheetnames=false&printtitle=false&pagenumbers=false' +
+        '&gridlines=false&fzr=false';
+      var token = ScriptApp.getOAuthToken();
+      var response = UrlFetchApp.fetch(pdfExportUrl, {
+        headers: { 'Authorization': 'Bearer ' + token },
+        muteHttpExceptions: true
+      });
+      if (response.getResponseCode() === 200) {
+        var pdfBlob = response.getBlob().setName(data.newSheetName + '.pdf');
+        var folders = DriveApp.getFoldersByName('Blood Chemistry Reports');
+        var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder('Blood Chemistry Reports');
+        pdfUrl = folder.createFile(pdfBlob).getUrl();
+      }
+    } catch (pdfErr) {
+      console.error('PDF export failed: ' + pdfErr.message);
+    }
+
+    var pdfLink = pdfUrl
+      ? '<p style="margin-top:12px;"><a href="' + pdfUrl + '" style="color:#2563eb;font-size:13px;">View saved PDF in Drive</a></p>'
+      : '';
+
+    return HtmlService.createHtmlOutput(
+      '<html><body style="font-family:system-ui;text-align:center;padding:60px 20px;">' +
+      '<div style="font-size:48px;margin-bottom:16px;">\\u2705</div>' +
+      '<h2 style="color:#065f46;">Spreadsheet Created!</h2>' +
+      '<p style="color:#333;margin:12px 0;"><strong>' + data.newSheetName + '</strong></p>' +
+      '<p style="color:#666;">' + updates.length + ' values populated</p>' +
+      '<a href="' + newSs.getUrl() + '" style="display:inline-block;margin-top:20px;padding:12px 32px;background:#2563eb;color:white;text-decoration:none;border-radius:8px;font-weight:600;">Open Spreadsheet</a>' +
+      pdfLink +
+      '<p style="margin-top:20px;color:#999;font-size:12px;">You can close this tab when done</p>' +
+      '</body></html>'
+    );
+  } catch(err) {
+    return HtmlService.createHtmlOutput(
+      '<html><body style="font-family:system-ui;text-align:center;padding:60px 20px;">' +
+      '<h2 style="color:#991b1b;">Error</h2>' +
+      '<p style="color:#666;">' + err.message + '</p>' +
+      '</body></html>'
+    );
+  }
+}
+
+function doGet(e) {
+  return ContentService.createTextOutput(
+    JSON.stringify({status: 'ok'})
+  ).setMimeType(ContentService.MimeType.JSON);
+}`;
+            navigator.clipboard.writeText(code).then(() => {
+                showToast('Apps Script code copied!');
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('copyToast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        function showStatus(html, type) {
+            const el = document.getElementById('status');
+            el.innerHTML = html;
+            el.className = `status-bar show ${type}`;
+        }
+
+        // Clear any stale localStorage URL on load
+        window.addEventListener('DOMContentLoaded', () => {
+            localStorage.removeItem('appsScriptUrl');
+        });
+    </script>
+</body>
+</html>
+
