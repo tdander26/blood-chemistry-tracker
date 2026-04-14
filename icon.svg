@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+  <!-- Black background with rounded corners -->
+  <rect width="180" height="180" rx="40" ry="40" fill="#0a0a0a"/>
+
+  <!-- Gold blood drop shape -->
+  <!-- Drop body (teardrop): pointed top, round bottom -->
+  <path d="M90 28 C90 28, 52 80, 52 108 A38 38 0 0 0 128 108 C128 80, 90 28, 90 28 Z"
+        fill="#B8923B"/>
+
+  <!-- Subtle highlight on drop -->
+  <ellipse cx="78" cy="95" rx="8" ry="14" fill="rgba(255,255,255,0.12)" transform="rotate(-15,78,95)"/>
+</svg>
