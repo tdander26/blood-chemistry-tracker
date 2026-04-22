@@ -839,11 +839,11 @@ function doGet(e) {
                     // Using item.text with ^ and $ prevents partial matches against addresses/other text.
                     if (!patientInfo.name && row.length > 0) {
                         for (const item of row) {
-                            // Matches Title Case: first letter uppercase, 2+ more letters, comma, space, same pattern
-                            // State abbreviations (OH, MO, MN etc.) are only 2 chars and won't match [a-zA-Z]{2,}
-                            const nameMatch = item.text.match(/^([A-Z][a-zA-Z]{2,},\s*[A-Z][a-zA-Z]{2,}(?:\s+[A-Z]\.?)?)$/);
-                            if (nameMatch && !fullText.includes('Physician') && !fullText.includes('©')) {
-                                // Ensure Title Case (handles edge cases where PDF may use ALL CAPS)
+                            // Matches Lastname, Firstname [Initial], allowing hyphenated last names
+                            // (e.g. "Jorgenson-Owens, Tammy"). State abbreviations (2 chars) won't match [a-zA-Z]{2,}.
+                            const nameMatch = item.text.match(/^([A-Z][a-zA-Z]{2,}(?:-[A-Z][a-zA-Z]+)?,\s*[A-Z][a-zA-Z]{2,}(?:\s+[A-Z]\.?)?)$/);
+                            // Reject lab-test names that share the "Word, Word" shape (e.g. "Protein, Total", "Bilirubin, Total").
+                            if (nameMatch && !TEST_MAP[nameMatch[1]] && !fullText.includes('Physician') && !fullText.includes('©')) {
                                 patientInfo.name = nameMatch[1].trim().replace(/\b\w+/g, w => w.charAt(0) + w.slice(1).toLowerCase());
                                 break;
                             }

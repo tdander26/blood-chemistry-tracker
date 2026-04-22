@@ -63,7 +63,13 @@ function doPost(e) {
         '&gid='         + sheetId +
         '&size=letter' +
         '&portrait=true' +
-        '&fitw=true' +
+        '&scale=4' +
+        '&top_margin=0.5' +
+        '&bottom_margin=0.5' +
+        '&left_margin=0.5' +
+        '&right_margin=0.5' +
+        '&horizontal_alignment=CENTER' +
+        '&vertical_alignment=TOP' +
         '&sheetnames=false' +
         '&printtitle=false' +
         '&pagenumbers=false' +
@@ -92,9 +98,16 @@ function doPost(e) {
     }
 
     // ── 4. Return success page ──────────────────────────────────────────────
-    var pdfLink = pdfUrl
+    // Pin links to the deploying account so multi-account Chrome sessions don't misroute them.
+    var authEmail = '';
+    try { authEmail = Session.getActiveUser().getEmail() || ''; } catch (ignore) {}
+    var authParam = authEmail ? ('authuser=' + encodeURIComponent(authEmail)) : 'authuser=0';
+    var sheetHref = newSs.getUrl() + (newSs.getUrl().indexOf('?') === -1 ? '?' : '&') + authParam;
+    var pdfHref   = pdfUrl ? (pdfUrl + (pdfUrl.indexOf('?') === -1 ? '?' : '&') + authParam) : '';
+
+    var pdfLink = pdfHref
       ? '<p style="margin-top:12px;">' +
-          '<a href="' + pdfUrl + '" style="color:#2563eb;font-size:13px;">' +
+          '<a href="' + pdfHref + '" target="_blank" rel="noopener" style="color:#2563eb;font-size:13px;">' +
           'View saved PDF in Drive</a></p>'
       : '';
 
@@ -104,7 +117,7 @@ function doPost(e) {
       '<h2 style="color:#065f46;">Spreadsheet Created!</h2>' +
       '<p style="color:#333;margin:12px 0;"><strong>' + data.newSheetName + '</strong></p>' +
       '<p style="color:#666;">' + updates.length + ' values populated</p>' +
-      '<a href="' + newSs.getUrl() + '" style="display:inline-block;margin-top:20px;padding:12px 32px;' +
+      '<a href="' + sheetHref + '" target="_blank" rel="noopener" style="display:inline-block;margin-top:20px;padding:12px 32px;' +
         'background:#2563eb;color:white;text-decoration:none;border-radius:8px;font-weight:600;">' +
         'Open Spreadsheet</a>' +
       pdfLink +
