@@ -124,10 +124,10 @@
    Authorized JavaScript origins.
    ========================================================================== */
 const CONFIG = {
-  GOOGLE_CLIENT_ID:  'PASTE_OAUTH_WEB_CLIENT_ID.apps.googleusercontent.com',
-  GOOGLE_API_KEY:    'PASTE_BROWSER_API_KEY',                 // used by the Picker
-  PDF_SERVICE_URL:   'https://functional-report-pdf-XXXX.run.app',
-  PDF_SERVICE_TOKEN: 'PASTE_PDF_SERVICE_AUTH_TOKEN',
+  GOOGLE_CLIENT_ID:  '889613087652-fdt1omsivp2l2aqbm2mh4djjq2ekiqeh.apps.googleusercontent.com',
+  GOOGLE_API_KEY:    'AIzaSyCRA7ORTd_K043tTIXoWnXq4R6ThFswbP8',  // browser key — restricted to our origins + Picker/Drive
+  PDF_SERVICE_URL:   'https://functional-report-pdf-XXXX.run.app',  // TODO: your Cloud Run URL
+  PDF_SERVICE_TOKEN: 'PASTE_PDF_SERVICE_AUTH_TOKEN',               // TODO: replaced by Google-identity auth (no client secret)
 
   // drive.file keeps us in NON-sensitive scope territory (no Google verification
   // ordeal). spreadsheets is needed to write cell values.
