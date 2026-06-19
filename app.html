@@ -35,6 +35,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://apis.google.com/js/api.js" async defer></script>
+  <script src="apex-report.js"></script>
 
   <style>
     :root {
@@ -359,14 +360,17 @@ async function uploadToDrive(blob, name, folderId) {
 // Apex report config, loaded as static assets (ready for the buildReportHtml port).
 async function loadApexConfig() {
   try {
-    const [markers, config] = await Promise.all([
+    const [markers, config, ranges] = await Promise.all([
       fetch('apex-markers.json').then(r => r.json()),
       fetch('apex-data.json').then(r => r.json()),
+      fetch('ranges.json').then(r => r.json()),
     ]);
     APEX = Object.assign({ markers }, config);
+    APEX.ranges = ranges;
     log('Report config loaded (' + Object.keys(markers).length + ' markers · '
         + APEX.APEX_THYROID_CATEGORIES.length + ' thyroid + '
-        + APEX.APEX_COMPUTED_PATTERNS.length + ' computed patterns).');
+        + APEX.APEX_COMPUTED_PATTERNS.length + ' computed patterns · '
+        + Object.keys(ranges.markers).length + ' ranges).');
   } catch (e) {
     log('Report config not loaded (' + e.message + ') — needed for the Functional Report.', 'err');
   }
@@ -479,10 +483,12 @@ async function createPopulatedSheet(parsed, name) {
   // us within drive.file), then batch-write values. Returns { spreadsheetId, gid }.
   throw new Error('createPopulatedSheet() not implemented yet (Phase 3)');
 }
-function buildReportHtml(parsed, sheetData) {
-  // TODO(Phase 3): port ApexReport.gs pattern detection + narrative, reusing
-  // apex-markers.json, into the same HTML/CSS the /render service expects.
-  throw new Error('buildReportHtml() not implemented yet (Phase 3)');
+// PORTED: builds the Functional Analysis report HTML via apex-report.js
+// (ApexReport.gs port) from the parsed values + ranges.json + APEX config.
+function buildReportHtml(parsed) {
+  if (typeof ApexReport === 'undefined') throw new Error('apex-report.js not loaded');
+  if (!APEX || !APEX.ranges) throw new Error('Report config (apex-data.json / ranges.json) not loaded');
+  return ApexReport.build(parsed.patient, parsed.results, APEX.ranges, APEX);
 }
 async function updateTrends(parsed, folderId) {
   // TODO(Phase 3): port ApexTrend.gs — longitudinal per-patient sheet.
@@ -510,7 +516,7 @@ async function run() {
     await uploadToDrive(sheetPdf, 'Blood Chemistry.pdf', folder.id);
 
     log('Rendering Functional Report…');
-    const reportHtml = buildReportHtml(parsed);               // STUB
+    const reportHtml = buildReportHtml(parsed);
     const reportPdf = await renderReportPdf(reportHtml, parsed.patient && parsed.patient.name);
     await uploadToDrive(reportPdf, 'Functional Analysis Report.pdf', folder.id);
 
