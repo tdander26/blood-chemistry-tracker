@@ -209,13 +209,17 @@ var ApexTrend = (function () {
       });
     });
 
+    // Order matters: do the merges BEFORE freezing columns. The Sheets API
+    // rejects creating a merge that crosses the frozen/non-frozen boundary, but
+    // freezing once the (full-width) merges already exist is allowed.
     var requests = [
       { updateCells: { rows: rows, fields: 'userEnteredValue,userEnteredFormat', start: { sheetId: sheetId, rowIndex: 0, columnIndex: 0 } } },
+    ].concat(merges).concat([
       { updateSheetProperties: { properties: { sheetId: sheetId, gridProperties: { frozenRowCount: 4, frozenColumnCount: 3 } }, fields: 'gridProperties.frozenRowCount,gridProperties.frozenColumnCount' } },
       dimReq(sheetId, 0, 1, 200), dimReq(sheetId, 1, 2, 80), dimReq(sheetId, 2, 3, 70),
       dimReq(sheetId, DATE_COL - 1, DATE_COL - 1 + nV, 90),
       dimReq(sheetId, trendCol - 1, trendCol, 180), dimReq(sheetId, sparkCol - 1, sparkCol, 110),
-    ].concat(merges);
+    ]);
     return requests;
   }
   function mergeRange(sheetId, r0, r1, c0, c1) { return { mergeCells: { range: { sheetId: sheetId, startRowIndex: r0, endRowIndex: r1, startColumnIndex: c0, endColumnIndex: c1 }, mergeType: 'MERGE_ALL' } }; }
