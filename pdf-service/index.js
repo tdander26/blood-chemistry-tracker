@@ -15,6 +15,25 @@ const express = require('express');
 const puppeteer = require('puppeteer');
 
 const app = express();
+
+// CORS — allow the browser app's origins to call /render and /export-sheet.
+// (The Apps Script backend is server-to-server and unaffected by this.) Override
+// the allowed origins with CORS_ORIGINS (comma-separated) for custom domains.
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || 'https://tdander26.github.io,http://localhost:8000')
+  .split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+app.use(function (req, res, next) {
+  const origin = req.get('Origin');
+  if (origin && (CORS_ORIGINS.indexOf('*') !== -1 || CORS_ORIGINS.indexOf(origin) !== -1)) {
+    res.set('Access-Control-Allow-Origin', origin);
+    res.set('Vary', 'Origin');
+    res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.set('Access-Control-Max-Age', '3600');
+  }
+  if (req.method === 'OPTIONS') return res.status(204).end();   // preflight
+  next();
+});
+
 app.use(express.json({ limit: '8mb' }));
 
 const AUTH_TOKEN = process.env.AUTH_TOKEN || '';
