@@ -8,8 +8,8 @@
 #   3. Set your project:                       gcloud config set project YOUR_PROJECT_ID
 #
 # Usage:
-#   ./deploy.sh                # generates a token on first run, deploys
-#   AUTH_TOKEN=xxxx ./deploy.sh # deploy with a specific token
+#   ./deploy.sh                 # redeploy, PRESERVING the existing AUTH_TOKEN
+#   AUTH_TOKEN=xxxx ./deploy.sh # deploy and set/rotate the shared token
 #
 set -euo pipefail
 
@@ -20,15 +20,15 @@ SERVICE="${SERVICE:-functional-report-pdf}"
 # Defaults to the Blood Chemistry web client; override via env if needed.
 AUTH_AUDIENCES="${AUTH_AUDIENCES:-889613087652-fdt1omsivp2l2aqbm2mh4djjq2ekiqeh.apps.googleusercontent.com}"
 
-# Generate a strong token if none provided.
-if [[ -z "${AUTH_TOKEN:-}" ]]; then
-  AUTH_TOKEN="$(openssl rand -hex 32)"
-  echo "================================================================"
-  echo "Generated AUTH_TOKEN (SAVE THIS — paste into GAS Script Properties):"
-  echo ""
-  echo "    $AUTH_TOKEN"
-  echo ""
-  echo "================================================================"
+# Build the env vars to apply. --update-env-vars (merge, not replace) means a
+# redeploy PRESERVES the service's existing AUTH_TOKEN unless you pass a new one,
+# so the live Apps Script integration keeps working with zero token handling.
+ENV_VARS="AUTH_AUDIENCES=$AUTH_AUDIENCES"
+if [[ -n "${AUTH_TOKEN:-}" ]]; then
+  ENV_VARS="AUTH_TOKEN=$AUTH_TOKEN,$ENV_VARS"
+  echo "Will set AUTH_TOKEN (from env) + AUTH_AUDIENCES."
+else
+  echo "No AUTH_TOKEN passed — preserving the deployed service's existing token; setting AUTH_AUDIENCES."
 fi
 
 echo "Enabling required APIs (idempotent)…"
@@ -45,7 +45,7 @@ gcloud run deploy "$SERVICE" \
   --timeout 120 \
   --concurrency 4 \
   --max-instances 3 \
-  --set-env-vars "AUTH_TOKEN=$AUTH_TOKEN,AUTH_AUDIENCES=$AUTH_AUDIENCES"
+  --update-env-vars "$ENV_VARS"
 
 echo ""
 echo "Deployed. Service URL:"
