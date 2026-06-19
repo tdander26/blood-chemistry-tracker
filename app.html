@@ -139,6 +139,66 @@ const CONFIG = {
   REPORTS_FOLDER_NAME: 'Blood Chemistry Reports',
 };
 
+/* ── Extraction map (ported verbatim from index.html) ──────────────────
+   Maps LabCorp test names → the template sheet row + section. Stable: do not
+   reorder; the row numbers are the sheet contract. ───────────────────── */
+const TEST_MAP = {
+  // CBC + Differential
+  'Hemoglobin':{row:7,section:'CBC + Differential'}, 'Hematocrit':{row:8,section:'CBC + Differential'},
+  'RBC':{row:9,section:'CBC + Differential'}, 'MCV':{row:10,section:'CBC + Differential'},
+  'MCH':{row:11,section:'CBC + Differential'}, 'MCHC':{row:12,section:'CBC + Differential'},
+  'RDW':{row:13,section:'CBC + Differential'}, 'Platelets':{row:14,section:'CBC + Differential'},
+  'WBC':{row:15,section:'CBC + Differential'}, 'Neutrophils':{row:16,section:'CBC + Differential'},
+  'Lymphs':{row:17,section:'CBC + Differential'}, 'Monocytes':{row:18,section:'CBC + Differential'},
+  'Eos':{row:19,section:'CBC + Differential'}, 'Basos':{row:20,section:'CBC + Differential'},
+  'Neutrophils (Absolute)':{row:21,section:'CBC + Differential'}, 'Lymphs (Absolute)':{row:22,section:'CBC + Differential'},
+  'Monocytes(Absolute)':{row:23,section:'CBC + Differential'}, 'Eos (Absolute)':{row:24,section:'CBC + Differential'},
+  'Baso (Absolute)':{row:25,section:'CBC + Differential'}, 'Immature Granulocytes':{row:26,section:'CBC + Differential'},
+  'Immature Grans (Abs)':{row:27,section:'CBC + Differential'},
+  // Glycemic
+  'Glucose':{row:30,section:'Metabolic Panel'}, 'Hemoglobin A1c':{row:31,section:'Metabolic Panel'},
+  'Insulin':{row:32,section:'Metabolic Panel'},
+  // Lipid
+  'Cholesterol, Total':{row:35,section:'Lipid Panel'}, 'Triglycerides':{row:36,section:'Lipid Panel'},
+  'LDL Chol Calc (NIH)':{row:37,section:'Lipid Panel'}, 'HDL Cholesterol':{row:38,section:'Lipid Panel'},
+  'VLDL Cholesterol Cal':{row:40,section:'Lipid Panel'},
+  // Protein
+  'Protein, Total':{row:42,section:'Metabolic Panel'}, 'Albumin':{row:43,section:'Metabolic Panel'},
+  'Globulin, Total':{row:44,section:'Metabolic Panel'},
+  // Nitrogen / Kidney
+  'eGFR':{row:47,section:'Metabolic Panel'}, 'Uric Acid':{row:49,section:'Metabolic Panel'},
+  'BUN':{row:50,section:'Metabolic Panel'}, 'Creatinine':{row:51,section:'Metabolic Panel'},
+  'BUN/Creatinine Ratio':{row:52,section:'Metabolic Panel'},
+  // Liver
+  'AST (SGOT)':{row:54,section:'Liver Markers'}, 'ALT (SGPT)':{row:55,section:'Liver Markers'},
+  'GGT':{row:56,section:'Liver Markers'}, 'LDH':{row:57,section:'Liver Markers'},
+  'Alkaline Phosphatase':{row:58,section:'Liver Markers'}, 'Bilirubin, Total':{row:59,section:'Liver Markers'},
+  'Bilirubin, Direct':{row:60,section:'Liver Markers'}, 'Bilirubin, Indirect':{row:61,section:'Liver Markers'},
+  // Ions / Minerals
+  'Sodium':{row:63,section:'Ions / Minerals'}, 'Potassium':{row:64,section:'Ions / Minerals'},
+  'Chloride':{row:65,section:'Ions / Minerals'}, 'Carbon Dioxide, Total':{row:66,section:'Ions / Minerals'},
+  'Calcium':{row:68,section:'Ions / Minerals'}, 'Magnesium':{row:69,section:'Ions / Minerals'},
+  'Phosphorus':{row:70,section:'Ions / Minerals'},
+  // Iron
+  'Iron':{row:72,section:'Iron Panel'}, 'Ferritin':{row:73,section:'Iron Panel'},
+  'Iron Bind.Cap.(TIBC)':{row:74,section:'Iron Panel'}, 'UIBC':{row:75,section:'Iron Panel'},
+  'Transferrin':{row:77,section:'Iron Panel'},
+  // D-FLAME
+  'Vitamin D, 25-Hydroxy':{row:79,section:'D-FLAME'}, 'Homocyst(e)ine':{row:80,section:'D-FLAME'},
+  'C-Reactive Protein, Cardiac':{row:81,section:'D-FLAME'},
+  // Thyroid
+  'TSH':{row:83,section:'Thyroid'}, 'Thyroxine (T4)':{row:84,section:'Thyroid'},
+  'T3 Uptake':{row:85,section:'Thyroid'}, 'Free Thyroxine Index':{row:86,section:'Thyroid'},
+  'Triiodothyronine (T3)':{row:87,section:'Thyroid'}, 'Triiodothyronine (T3), Free':{row:88,section:'Thyroid'},
+  'T4,Free(Direct)':{row:89,section:'Thyroid'}, 'Reverse T3, Serum':{row:90,section:'Thyroid'},
+  'Thyroid Peroxidase (TPO) Ab':{row:91,section:'Thyroid'}, 'Thyroglobulin Antibody':{row:92,section:'Thyroid'},
+  'Thyroxine Binding Globulin':{row:93,section:'Thyroid'},
+  // Additional
+  'ANA by IFA Rfx Titer/Pattern':{row:99,section:'Additional'},
+};
+// Tests that return text values (e.g. titer/pattern) instead of numbers.
+const TEXT_VALUE_TESTS = new Set(['ANA by IFA Rfx Titer/Pattern']);
+
 /* ── tiny helpers ─────────────────────────────────────────────────────── */
 const $ = (id) => document.getElementById(id);
 const LS = {
@@ -161,6 +221,7 @@ function configReady() {
 let tokenClient = null;
 let accessToken = null;            // short-lived, in memory only
 let pickedFile  = null;            // the LabCorp PDF File
+let parsedData  = null;            // cached parsePdf() result for the picked file
 
 /* ── auth (GIS) ───────────────────────────────────────────────────────── */
 function initAuth() {
@@ -292,10 +353,106 @@ async function uploadToDrive(blob, name, folderId) {
 /* ============================================================================
    Phase 3 STUBS — these get the real ports next.
    ========================================================================== */
+// PORTED from index.html (position-aware PDF.js extraction). Pure: no DOM side
+// effects. Returns { patient, results, updates:[{cell,value}], numPages }.
 async function parsePdf(file) {
-  // TODO(Phase 3): port the PDF.js position-aware extraction from index.html
-  // (patient name/DOB + marker values). Returns { patient, values:[{cell,value}] }.
-  throw new Error('parsePdf() not implemented yet (Phase 3)');
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+  const allItems = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    const viewport = page.getViewport({ scale: 1 });
+    content.items.forEach(item => {
+      const x = item.transform[4];
+      const y = viewport.height - item.transform[5]; // flip y
+      const text = item.str.trim();
+      if (text) allItems.push({ x, y, text, page: p });
+    });
+  }
+  if (!allItems.length) throw new Error('No text found in PDF');
+
+  // Group items into rows (similar y within 3px, same page).
+  allItems.sort((a, b) => (a.page - b.page) * 10000 + (a.y - b.y) || a.x - b.x);
+  const rows = [];
+  let currentRow = [allItems[0]];
+  for (let i = 1; i < allItems.length; i++) {
+    const item = allItems[i], prev = currentRow[currentRow.length - 1];
+    if (item.page === prev.page && Math.abs(item.y - prev.y) < 3) currentRow.push(item);
+    else { rows.push(currentRow); currentRow = [item]; }
+  }
+  rows.push(currentRow);
+
+  const patient = { name: '', date: '', age: '', sex: '', dob: '' };
+  const results = {};
+  for (const row of rows) {
+    row.sort((a, b) => a.x - b.x);
+    const fullText = row.map(r => r.text).join(' ');
+
+    if (!patient.name && row.length > 0) {
+      for (const item of row) {
+        const nameMatch = item.text.match(/^([A-Z][a-zA-Z]{2,}(?:-[A-Z][a-zA-Z]+)?,\s*[A-Z][a-zA-Z]{2,}(?:\s+[A-Z]\.?)?)$/);
+        if (nameMatch && !TEST_MAP[nameMatch[1]] && !fullText.includes('Physician') && !fullText.includes('©')) {
+          patient.name = nameMatch[1].trim().replace(/\b\w+/g, w => w.charAt(0) + w.slice(1).toLowerCase());
+          break;
+        }
+      }
+    }
+    if (fullText.includes('Date Collected:')) { const m = fullText.match(/Date Collected:\s*([0-9/]+)/); if (m) patient.date = m[1]; }
+    if (fullText.includes('Age:'))            { const m = fullText.match(/Age:\s*(\d+)/);              if (m) patient.age = m[1]; }
+    if (fullText.includes('Sex:'))            { const m = fullText.match(/Sex:\s*(Male|Female|M|F)/i); if (m) patient.sex = m[1].charAt(0).toUpperCase(); }
+
+    if (row.length >= 2) {
+      const leftItems = row.filter(r => r.x < 180);
+      const valueItems = row.filter(r => r.x >= 180 && r.x < 350);
+      if (leftItems.length > 0 && valueItems.length > 0) {
+        let testName = leftItems.map(r => r.text).join(' ');
+        const rawValue = valueItems[0].text;
+        testName = testName.replace(/\s+\d{2}$/, '').trim();
+        if (testName === 'Test' || testName.includes('Current Result') || testName.includes('Previous Result') ||
+            testName.includes('Date') || testName.includes('Patient') || testName.includes('Specimen') ||
+            testName.includes('Account') || testName.includes('Ordering') || testName.includes('©') ||
+            testName.includes('Page') || testName.includes('DOB') || testName.includes('Fasting') ||
+            testName.includes('Ordered Items') || testName.includes('Clinical') || testName.includes('General Comments')) continue;
+        const mapping = TEST_MAP[testName];
+        const isNumericValue = rawValue.match(/^[<>]?[\d.]+$/);
+        const isTextValue = TEXT_VALUE_TESTS.has(testName) && rawValue.match(/^[A-Za-z][A-Za-z\s\-\/\.]*$/);
+        if (mapping && (isNumericValue || isTextValue)) {
+          results[testName] = { value: rawValue, row: mapping.row, section: mapping.section, cell: 'D' + mapping.row };
+        }
+      }
+    }
+  }
+
+  // DOB — post-loop full-text scan (rows can split "DOB:" from the date).
+  const allText = rows.map(r => r.map(i => i.text).join(' ')).join('  ');
+  const dobPatterns = [
+    /\bDOB\b[:\s]+([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i,
+    /Date\s+of\s+Birth[:\s]+([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i,
+    /\bDOB\b[:\s]+([0-9]{4}[\/\-][0-9]{1,2}[\/\-][0-9]{1,2})/i, // ISO
+  ];
+  for (const pat of dobPatterns) {
+    const m = allText.match(pat);
+    if (m) {
+      const parts = m[1].split(/[\/\-]/);
+      let yyyy, mm, dd;
+      if (parts[0].length === 4) { yyyy = parts[0]; mm = parts[1].padStart(2, '0'); dd = parts[2].padStart(2, '0'); }
+      else { mm = parts[0].padStart(2, '0'); dd = parts[1].padStart(2, '0'); yyyy = parts[2]; if (yyyy.length === 2) yyyy = (parseInt(yyyy, 10) > 30 ? '19' : '20') + yyyy; }
+      patient.dob = yyyy + '-' + mm + '-' + dd;
+      break;
+    }
+  }
+
+  // Cell updates the sheet needs (mirrors the old pushViaAppsScript payload).
+  const updates = [];
+  if (patient.name) updates.push({ cell: 'B2', value: patient.name });
+  if (patient.date) updates.push({ cell: 'B3', value: patient.date });
+  if (patient.age)  updates.push({ cell: 'E2', value: patient.age });
+  if (patient.sex)  updates.push({ cell: 'I2', value: patient.sex });
+  for (const [, data] of Object.entries(results)) updates.push({ cell: 'D' + data.row, value: data.value });
+
+  return { patient, results, updates, numPages: pdf.numPages };
 }
 async function createPopulatedSheet(parsed, name) {
   // TODO(Phase 3): create the template in the user's Drive (ship template as a
@@ -321,11 +478,13 @@ async function run() {
     const folder = LS.folder || await getOrCreateReportsFolder();
     log('Saving into: ' + (folder.name || folder.id));
 
-    log('Parsing PDF…');
-    const parsed = await parsePdf(pickedFile);                 // STUB until Phase 3
+    const parsed = parsedData || await parsePdf(pickedFile);
+    log('Using ' + parsed.updates.length + ' extracted values'
+        + (parsed.patient.name ? ' for ' + parsed.patient.name : ''));
 
     log('Building sheet…');
-    const { spreadsheetId, gid } = await createPopulatedSheet(parsed, 'Report'); // STUB
+    const sheetName = ((parsed.patient.name || 'Patient') + ' ' + (parsed.patient.date || '')).trim().slice(0, 100);
+    const { spreadsheetId, gid } = await createPopulatedSheet(parsed, sheetName); // STUB
 
     log('Exporting styled sheet PDF…');
     const sheetPdf = await exportSheetPdf(spreadsheetId, gid, 'Blood Chemistry');
@@ -372,15 +531,34 @@ function wire() {
   $('drop').ondragover = (e) => { e.preventDefault(); $('drop').classList.add('has'); };
   $('drop').ondragleave = () => $('drop').classList.remove('has');
   $('drop').ondrop = (e) => { e.preventDefault(); setFile(e.dataTransfer.files[0]); };
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
   initAuth();
   loadPicker();
   refreshUI();
 }
-function setFile(file) {
+async function setFile(file) {
   if (!file) return;
   pickedFile = file;
+  parsedData = null;
   $('drop').classList.add('has');
   $('drop').textContent = file.name;
+  refreshUI();
+  // Preview the extraction right away — works with NO Google connection, so it
+  // proves parsePdf() on its own.
+  try {
+    log('Parsing ' + file.name + '…');
+    parsedData = await parsePdf(file);
+    const p = parsedData.patient;
+    log('Parsed ' + parsedData.updates.length + ' values'
+        + (p.name ? ' · ' + p.name : '')
+        + (p.dob ? ' · DOB ' + p.dob : '')
+        + ' · ' + parsedData.numPages + ' pages', 'ok');
+  } catch (e) {
+    log('Parse failed: ' + e.message, 'err');
+  }
   refreshUI();
 }
 
