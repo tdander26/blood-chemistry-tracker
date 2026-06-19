@@ -36,6 +36,7 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://apis.google.com/js/api.js" async defer></script>
   <script src="apex-report.js"></script>
+  <script src="apex-trend.js"></script>
 
   <style>
     :root {
@@ -543,9 +544,12 @@ function buildReportHtml(parsed) {
   if (!APEX || !APEX.ranges) throw new Error('Report config (apex-data.json / ranges.json) not loaded');
   return ApexReport.build(parsed.patient, parsed.results, APEX.ranges, APEX);
 }
+// PORTED: longitudinal per-patient trend sheet via apex-trend.js (ApexTrend.gs
+// port). Non-blocking — run() catches any error so the main save still completes.
 async function updateTrends(parsed, folder) {
-  // TODO: port ApexTrend.gs — longitudinal per-patient trend sheet. Non-blocking.
-  throw new Error('updateTrends() not implemented yet');
+  if (typeof ApexTrend === 'undefined') throw new Error('apex-trend.js not loaded');
+  const token = await ensureToken();
+  return ApexTrend.update({ token, parsed, folder, APEX, collectionDate: parsed.patient.date });
 }
 
 /* ── orchestration ────────────────────────────────────────────────────── */
