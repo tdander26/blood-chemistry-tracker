@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blood Chemistry — Client Rewrite (WIP)</title>
+
+  <!--
+    ============================================================================
+    Phase 2 scaffold — per-practitioner, client-side rewrite of the app.
+
+    Goal: each practitioner signs in with their OWN Google account and the
+    generated sheet + PDFs land in THEIR OWN Drive. No Apps Script copy/paste.
+
+    What's WIRED in this scaffold (ready):
+      - Google Identity Services (GIS) sign-in  →  per-user access token
+      - Google Picker folder selection (+ app-folder fallback)
+      - exportSheetPdf()  →  POST pdf-service /export-sheet  (route shipped in Phase 1)
+      - renderReportPdf() →  POST pdf-service /render
+      - uploadToDrive()   →  multipart upload to the practitioner's Drive
+      - "Connected as X / Saving to Y", cached in localStorage
+
+    What's STUBBED (Phase 3 — see TODO markers):
+      - parsePdf()             port the PDF.js extraction from index.html
+      - createPopulatedSheet() Sheets/Drive API: template → copy → write values
+      - buildReportHtml()      port ApexReport.gs (+ apex-markers.json) to JS
+      - updateTrends()         Sheets API longitudinal sheet
+
+    The two render steps go through your existing Cloud Run service ON PURPOSE,
+    to keep the PDFs pixel-identical to the current app (browsers can't fetch
+    the styled Sheets export directly — CORS).
+    ============================================================================
+  -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://apis.google.com/js/api.js" async defer></script>
+
+  <style>
+    :root {
+      --primary:#2563eb; --primary-dark:#1d4ed8; --accent:#10b981;
+      --bg:#f1f5f9; --card:#fff; --text:#0f172a; --muted:#64748b; --border:#e2e8f0;
+      --ok-bg:#ecfdf5; --ok-text:#065f46; --err-bg:#fef2f2; --err-text:#991b1b;
+      --info-bg:#eff6ff; --info-text:#1e40af; --radius:12px;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+           background:var(--bg); color:var(--text); padding:24px; }
+    .wrap { max-width:760px; margin:0 auto; }
+    h1 { font-size:24px; letter-spacing:-0.5px; margin-bottom:4px; }
+    .sub { color:var(--muted); font-size:13px; margin-bottom:24px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+            padding:20px; margin-bottom:16px; }
+    .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    button { min-height:48px; padding:0 20px; border-radius:8px; border:1px solid var(--border);
+             font-size:14px; font-weight:600; cursor:pointer; background:var(--card); color:var(--text); }
+    button.primary { background:var(--primary); color:#fff; border-color:var(--primary); }
+    button.go { background:var(--accent); color:#fff; border-color:var(--accent); }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .pill { font-size:12px; padding:6px 12px; border-radius:999px; background:var(--bg);
+            color:var(--muted); display:inline-flex; gap:6px; align-items:center; }
+    .pill.on { background:var(--ok-bg); color:var(--ok-text); }
+    .drop { border:2px dashed var(--border); border-radius:var(--radius); padding:28px;
+            text-align:center; color:var(--muted); font-size:14px; cursor:pointer; }
+    .drop.has { border-color:var(--accent); color:var(--ok-text); background:var(--ok-bg); }
+    #log { font-family:'SFMono-Regular',ui-monospace,monospace; font-size:12px; white-space:pre-wrap;
+           background:#0f172a; color:#cbd5e1; border-radius:8px; padding:14px; min-height:120px;
+           max-height:320px; overflow:auto; }
+    .label { font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted);
+             font-weight:700; margin-bottom:8px; }
+    .warn { background:var(--err-bg); color:var(--err-text); border:1px solid #fecaca;
+            border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:16px; display:none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Blood Chemistry — your Drive</h1>
+    <div class="sub">Per-practitioner rewrite (work in progress). Each report saves to <em>your</em> Google Drive.</div>
+
+    <div id="configWarn" class="warn"></div>
+
+    <!-- ── Connection ───────────────────────────────────────────────── -->
+    <div class="card">
+      <div class="label">Google Drive</div>
+      <div class="row">
+        <button id="connectBtn" class="primary">Connect Google Drive</button>
+        <button id="folderBtn" disabled>Choose folder…</button>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <span id="acctPill" class="pill">Not connected</span>
+        <span id="folderPill" class="pill">Saving to: (app folder)</span>
+      </div>
+    </div>
+
+    <!-- ── Input ────────────────────────────────────────────────────── -->
+    <div class="card">
+      <div class="label">LabCorp PDF</div>
+      <div id="drop" class="drop">Drop a LabCorp PDF here, or click to browse</div>
+      <input id="file" type="file" accept=".pdf" hidden />
+    </div>
+
+    <!-- ── Action ───────────────────────────────────────────────────── -->
+    <div class="card">
+      <div class="row">
+        <button id="goBtn" class="go" disabled>Generate &amp; save to my Drive</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">Activity</div>
+      <div id="log">Ready.</div>
+    </div>
+  </div>
+
+<script>
+"use strict";
+
+/* ============================================================================
+   CONFIG — fill these from your Google Cloud project (same project the
+   report-card app already uses). All of these are public client-side values
+   EXCEPT they should be scoped: lock the API key to your origins, and add
+   https://tdander26.github.io + http://localhost:8000 to the OAuth client's
+   Authorized JavaScript origins.
+   ========================================================================== */
+const CONFIG = {
+  GOOGLE_CLIENT_ID:  'PASTE_OAUTH_WEB_CLIENT_ID.apps.googleusercontent.com',
+  GOOGLE_API_KEY:    'PASTE_BROWSER_API_KEY',                 // used by the Picker
+  PDF_SERVICE_URL:   'https://functional-report-pdf-XXXX.run.app',
+  PDF_SERVICE_TOKEN: 'PASTE_PDF_SERVICE_AUTH_TOKEN',
+
+  // drive.file keeps us in NON-sensitive scope territory (no Google verification
+  // ordeal). spreadsheets is needed to write cell values.
+  SCOPES: [
+    'https://www.googleapis.com/auth/drive.file',
+    'https://www.googleapis.com/auth/spreadsheets',
+    'email',
+  ].join(' '),
+
+  REPORTS_FOLDER_NAME: 'Blood Chemistry Reports',
+};
+
+/* ── tiny helpers ─────────────────────────────────────────────────────── */
+const $ = (id) => document.getElementById(id);
+const LS = {
+  get email()  { return localStorage.getItem('bc_email')  || ''; },
+  set email(v) { v ? localStorage.setItem('bc_email', v)  : localStorage.removeItem('bc_email'); },
+  get folder() { try { return JSON.parse(localStorage.getItem('bc_folder') || 'null'); } catch { return null; } },
+  set folder(v){ v ? localStorage.setItem('bc_folder', JSON.stringify(v)) : localStorage.removeItem('bc_folder'); },
+};
+function log(msg, kind) {
+  const el = $('log');
+  const tag = kind === 'err' ? '✗ ' : kind === 'ok' ? '✓ ' : '· ';
+  el.textContent += '\n' + tag + msg;
+  el.scrollTop = el.scrollHeight;
+}
+function configReady() {
+  return !Object.values(CONFIG).some(v => typeof v === 'string' && v.indexOf('PASTE') === 0 || (typeof v === 'string' && v.indexOf('XXXX') > -1));
+}
+
+/* ── state ────────────────────────────────────────────────────────────── */
+let tokenClient = null;
+let accessToken = null;            // short-lived, in memory only
+let pickedFile  = null;            // the LabCorp PDF File
+
+/* ── auth (GIS) ───────────────────────────────────────────────────────── */
+function initAuth() {
+  if (!window.google || !google.accounts || !google.accounts.oauth2) {
+    return setTimeout(initAuth, 200); // GIS script still loading
+  }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CONFIG.GOOGLE_CLIENT_ID,
+    scope: CONFIG.SCOPES,
+    callback: (resp) => {
+      if (resp.error) { log('Auth failed: ' + resp.error, 'err'); return; }
+      accessToken = resp.access_token;
+      log('Connected.', 'ok');
+      fetchEmail().then(() => { $('folderBtn').disabled = false; refreshUI(); });
+    },
+  });
+  refreshUI();
+}
+
+// Re-request a token each session (no client-side refresh tokens by design).
+function ensureToken() {
+  return new Promise((resolve, reject) => {
+    if (accessToken) return resolve(accessToken);
+    if (!tokenClient) return reject(new Error('Auth not ready'));
+    const prevCb = tokenClient.callback;
+    tokenClient.callback = (resp) => {
+      tokenClient.callback = prevCb;
+      if (resp.error) return reject(new Error(resp.error));
+      accessToken = resp.access_token;
+      resolve(accessToken);
+    };
+    tokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+
+async function fetchEmail() {
+  try {
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: 'Bearer ' + accessToken },
+    });
+    if (r.ok) { const u = await r.json(); LS.email = u.email || ''; }
+  } catch (e) { /* non-fatal */ }
+}
+
+/* ── Google Picker (folder selection) ─────────────────────────────────── */
+let pickerReady = false;
+function loadPicker() {
+  if (!window.gapi) return setTimeout(loadPicker, 200);
+  gapi.load('picker', () => { pickerReady = true; });
+}
+function chooseFolder() {
+  if (!pickerReady || !accessToken) { log('Connect first.', 'err'); return; }
+  const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+    .setSelectFolderEnabled(true)
+    .setIncludeFolders(true)
+    .setMimeTypes('application/vnd.google-apps.folder');
+  const picker = new google.picker.PickerBuilder()
+    .setOAuthToken(accessToken)
+    .setDeveloperKey(CONFIG.GOOGLE_API_KEY)
+    .addView(view)
+    .setCallback((data) => {
+      if (data.action === google.picker.Action.PICKED) {
+        const doc = data.docs[0];
+        LS.folder = { id: doc.id, name: doc.name };
+        log('Folder set: ' + doc.name, 'ok');
+        refreshUI();
+      }
+    })
+    .build();
+  picker.setVisible(true);
+}
+
+// Fallback when no folder is chosen: find/create "Blood Chemistry Reports".
+async function getOrCreateReportsFolder() {
+  const token = await ensureToken();
+  const q = encodeURIComponent(
+    "name='" + CONFIG.REPORTS_FOLDER_NAME + "' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+  );
+  const list = await fetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name)', {
+    headers: { Authorization: 'Bearer ' + token },
+  }).then(r => r.json());
+  if (list.files && list.files.length) return list.files[0];
+  const created = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: CONFIG.REPORTS_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }),
+  }).then(r => r.json());
+  return created;
+}
+
+/* ── pdf-service calls (Phase 1 routes) ───────────────────────────────── */
+async function exportSheetPdf(spreadsheetId, gid, filename) {
+  const token = await ensureToken();
+  const r = await fetch(CONFIG.PDF_SERVICE_URL + '/export-sheet', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + CONFIG.PDF_SERVICE_TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ spreadsheetId, gid, googleAccessToken: token, filename }),
+  });
+  if (!r.ok) throw new Error('export-sheet ' + r.status + ': ' + (await r.text()).slice(0, 200));
+  return await r.blob(); // application/pdf
+}
+async function renderReportPdf(html, footerLabel) {
+  const r = await fetch(CONFIG.PDF_SERVICE_URL + '/render', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + CONFIG.PDF_SERVICE_TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ html, footerLabel }),
+  });
+  if (!r.ok) throw new Error('render ' + r.status + ': ' + (await r.text()).slice(0, 200));
+  return await r.blob();
+}
+
+/* ── Drive upload (into the practitioner's own Drive) ─────────────────── */
+async function uploadToDrive(blob, name, folderId) {
+  const token = await ensureToken();
+  const meta = { name, mimeType: 'application/pdf' };
+  if (folderId) meta.parents = [folderId];
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+  form.append('file', blob);
+  const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token },
+    body: form,
+  });
+  if (!r.ok) throw new Error('upload ' + r.status + ': ' + (await r.text()).slice(0, 200));
+  return await r.json(); // { id, webViewLink }
+}
+
+/* ============================================================================
+   Phase 3 STUBS — these get the real ports next.
+   ========================================================================== */
+async function parsePdf(file) {
+  // TODO(Phase 3): port the PDF.js position-aware extraction from index.html
+  // (patient name/DOB + marker values). Returns { patient, values:[{cell,value}] }.
+  throw new Error('parsePdf() not implemented yet (Phase 3)');
+}
+async function createPopulatedSheet(parsed, name) {
+  // TODO(Phase 3): create the template in the user's Drive (ship template as a
+  // versioned .xlsx the app imports, OR Sheets API from a structure spec — keeps
+  // us within drive.file), then batch-write values. Returns { spreadsheetId, gid }.
+  throw new Error('createPopulatedSheet() not implemented yet (Phase 3)');
+}
+function buildReportHtml(parsed, sheetData) {
+  // TODO(Phase 3): port ApexReport.gs pattern detection + narrative, reusing
+  // apex-markers.json, into the same HTML/CSS the /render service expects.
+  throw new Error('buildReportHtml() not implemented yet (Phase 3)');
+}
+async function updateTrends(parsed, folderId) {
+  // TODO(Phase 3): port ApexTrend.gs — longitudinal per-patient sheet.
+  throw new Error('updateTrends() not implemented yet (Phase 3)');
+}
+
+/* ── orchestration ────────────────────────────────────────────────────── */
+async function run() {
+  try {
+    $('goBtn').disabled = true;
+    await ensureToken();
+    const folder = LS.folder || await getOrCreateReportsFolder();
+    log('Saving into: ' + (folder.name || folder.id));
+
+    log('Parsing PDF…');
+    const parsed = await parsePdf(pickedFile);                 // STUB until Phase 3
+
+    log('Building sheet…');
+    const { spreadsheetId, gid } = await createPopulatedSheet(parsed, 'Report'); // STUB
+
+    log('Exporting styled sheet PDF…');
+    const sheetPdf = await exportSheetPdf(spreadsheetId, gid, 'Blood Chemistry');
+    await uploadToDrive(sheetPdf, 'Blood Chemistry.pdf', folder.id);
+
+    log('Rendering Functional Report…');
+    const reportHtml = buildReportHtml(parsed);               // STUB
+    const reportPdf = await renderReportPdf(reportHtml, parsed.patient && parsed.patient.name);
+    await uploadToDrive(reportPdf, 'Functional Analysis Report.pdf', folder.id);
+
+    await updateTrends(parsed, folder.id);                    // STUB
+    log('Done — saved to your Drive.', 'ok');
+  } catch (e) {
+    log(e.message, 'err');
+  } finally {
+    $('goBtn').disabled = false;
+  }
+}
+
+/* ── UI wiring ────────────────────────────────────────────────────────── */
+function refreshUI() {
+  const email = LS.email;
+  $('acctPill').textContent = email ? ('Connected as ' + email) : 'Not connected';
+  $('acctPill').className = 'pill' + (email ? ' on' : '');
+  const f = LS.folder;
+  $('folderPill').textContent = 'Saving to: ' + (f ? f.name : '(app folder)');
+  $('goBtn').disabled = !(accessToken && pickedFile);
+}
+
+function wire() {
+  if (!configReady()) {
+    const w = $('configWarn');
+    w.style.display = 'block';
+    w.textContent = 'Fill in CONFIG (client id / API key / pdf-service URL + token) at the top of the script before this will connect.';
+  }
+  $('connectBtn').onclick = () => {
+    if (!tokenClient) { log('Auth not ready yet.', 'err'); return; }
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  };
+  $('folderBtn').onclick = chooseFolder;
+  $('goBtn').onclick = run;
+  $('drop').onclick = () => $('file').click();
+  $('file').onchange = (e) => setFile(e.target.files[0]);
+  $('drop').ondragover = (e) => { e.preventDefault(); $('drop').classList.add('has'); };
+  $('drop').ondragleave = () => $('drop').classList.remove('has');
+  $('drop').ondrop = (e) => { e.preventDefault(); setFile(e.dataTransfer.files[0]); };
+  initAuth();
+  loadPicker();
+  refreshUI();
+}
+function setFile(file) {
+  if (!file) return;
+  pickedFile = file;
+  $('drop').classList.add('has');
+  $('drop').textContent = file.name;
+  refreshUI();
+}
+
+window.addEventListener('DOMContentLoaded', wire);
+</script>
+</body>
+</html>
