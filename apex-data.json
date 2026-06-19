@@ -1,0 +1,691 @@
+{
+  "APEX_SHEET_TO_MANUAL": {
+    "Hemoglobin": "Hemoglobin",
+    "Hematocrit": "Hematocrit",
+    "RBC": "Red Blood Cells",
+    "MCV": "Mean Corpuscular Volume",
+    "MCH": "Mean Corpuscular Hemoglobin",
+    "MCHC": "Mean Corpuscular Hemoglobin Concentration",
+    "RDW": "Red Blood Cell Distribution Width",
+    "Platelets": "Platelets",
+    "WBC": "White Blood Cells",
+    "Neutrophils": "Neutrophils",
+    "Lymphs": "Lymphocytes",
+    "Monocytes": "Monocytes",
+    "Eos": "Eosinophils",
+    "Basos": "Basophils",
+    "Neutrophils (Absolute)": null,
+    "Lymphs (Absolute)": null,
+    "Monocytes(Absolute)": null,
+    "Eos (Absolute)": null,
+    "Baso (Absolute)": null,
+    "Immature Granulocytes": null,
+    "Immature Grans (Abs)": null,
+    "Glucose": "Glucose",
+    "Hemoglobin A1c": null,
+    "Insulin": null,
+    "Cholesterol, Total": "Cholesterol",
+    "Triglycerides": "Triglycerides",
+    "LDL Chol Calc (NIH)": "LDL",
+    "HDL Cholesterol": "HDL",
+    "VLDL Cholesterol Cal": null,
+    "Protein, Total": "Total Protein",
+    "Albumin": "Albumin",
+    "Globulin, Total": "Globulin",
+    "eGFR": null,
+    "Uric Acid": "Uric Acid",
+    "BUN": "Blood Urea Nitrogen",
+    "Creatinine": "Creatinine",
+    "BUN/Creatinine Ratio": null,
+    "AST (SGOT)": "SGOT/AST",
+    "ALT (SGPT)": "SGPT/ALT",
+    "GGT": "GGTP",
+    "LDH": "Lactic Acid Dehydrogenase (LDH)",
+    "Alkaline Phosphatase": "Alkaline Phosphatase",
+    "Bilirubin, Total": "Total Bilirubin",
+    "Bilirubin, Direct": null,
+    "Bilirubin, Indirect": null,
+    "Sodium": "Sodium",
+    "Potassium": "Potassium",
+    "Chloride": "Chloride",
+    "Carbon Dioxide, Total": "Carbon Dioxide",
+    "Calcium": "Calcium",
+    "Magnesium": "Magnesium",
+    "Phosphorus": "Phosphorus",
+    "Iron": "Iron",
+    "Ferritin": null,
+    "Iron Bind.Cap.(TIBC)": "TIBC",
+    "UIBC": null,
+    "Transferrin": null,
+    "Vitamin D, 25-Hydroxy": null,
+    "Homocyst(e)ine": null,
+    "C-Reactive Protein, Cardiac": null,
+    "TSH": "Thyroid-Stimulating Hormone",
+    "Thyroxine (T4)": "Thyroxine (T4)",
+    "T3 Uptake": "Triiodothyronine (T3) Uptake",
+    "Free Thyroxine Index": "Free Thyroxine Index",
+    "Triiodothyronine (T3)": null,
+    "Triiodothyronine (T3), Free": null,
+    "T4,Free(Direct)": null,
+    "Reverse T3, Serum": null,
+    "Thyroid Peroxidase (TPO) Ab": null,
+    "Thyroglobulin Antibody": null,
+    "Thyroxine Binding Globulin": null,
+    "ANA by IFA Rfx Titer/Pattern": null
+  },
+  "APEX_SHEET_ROWS": {
+    "Hemoglobin": 7,
+    "Hematocrit": 8,
+    "RBC": 9,
+    "MCV": 10,
+    "MCH": 11,
+    "MCHC": 12,
+    "RDW": 13,
+    "Platelets": 14,
+    "WBC": 15,
+    "Neutrophils": 16,
+    "Lymphs": 17,
+    "Monocytes": 18,
+    "Eos": 19,
+    "Basos": 20,
+    "Neutrophils (Absolute)": 21,
+    "Lymphs (Absolute)": 22,
+    "Monocytes(Absolute)": 23,
+    "Eos (Absolute)": 24,
+    "Baso (Absolute)": 25,
+    "Immature Granulocytes": 26,
+    "Immature Grans (Abs)": 27,
+    "Glucose": 30,
+    "Hemoglobin A1c": 31,
+    "Insulin": 32,
+    "Cholesterol, Total": 35,
+    "Triglycerides": 36,
+    "LDL Chol Calc (NIH)": 37,
+    "HDL Cholesterol": 38,
+    "VLDL Cholesterol Cal": 40,
+    "Protein, Total": 42,
+    "Albumin": 43,
+    "Globulin, Total": 44,
+    "eGFR": 47,
+    "Uric Acid": 49,
+    "BUN": 50,
+    "Creatinine": 51,
+    "BUN/Creatinine Ratio": 52,
+    "AST (SGOT)": 54,
+    "ALT (SGPT)": 55,
+    "GGT": 56,
+    "LDH": 57,
+    "Alkaline Phosphatase": 58,
+    "Bilirubin, Total": 59,
+    "Bilirubin, Direct": 60,
+    "Bilirubin, Indirect": 61,
+    "Sodium": 63,
+    "Potassium": 64,
+    "Chloride": 65,
+    "Carbon Dioxide, Total": 66,
+    "Calcium": 68,
+    "Magnesium": 69,
+    "Phosphorus": 70,
+    "Iron": 72,
+    "Ferritin": 73,
+    "Iron Bind.Cap.(TIBC)": 74,
+    "UIBC": 75,
+    "Transferrin": 77,
+    "Vitamin D, 25-Hydroxy": 79,
+    "Homocyst(e)ine": 80,
+    "C-Reactive Protein, Cardiac": 81,
+    "TSH": 83,
+    "Thyroxine (T4)": 84,
+    "T3 Uptake": 85,
+    "Free Thyroxine Index": 86,
+    "Triiodothyronine (T3)": 87,
+    "Triiodothyronine (T3), Free": 88,
+    "T4,Free(Direct)": 89,
+    "Reverse T3, Serum": 90,
+    "Thyroid Peroxidase (TPO) Ab": 91,
+    "Thyroglobulin Antibody": 92,
+    "Thyroxine Binding Globulin": 93,
+    "ANA by IFA Rfx Titer/Pattern": 99
+  },
+  "APEX_THYROID_CATEGORIES": [
+    {
+      "id": 1,
+      "name": "Primary Pituitary, Secondary Hypothyroidism",
+      "summary": "Pituitary-driven hypothyroidism (low TSH from CNS or stress drivers) plus at least one low downstream hormone.",
+      "triggers": [
+        [
+          {
+            "sheet": "TSH",
+            "dir": "low"
+          },
+          {
+            "sheet": "Thyroxine (T4)",
+            "dir": "low"
+          }
+        ],
+        [
+          {
+            "sheet": "TSH",
+            "dir": "low"
+          },
+          {
+            "sheet": "Triiodothyronine (T3)",
+            "dir": "low"
+          }
+        ],
+        [
+          {
+            "sheet": "TSH",
+            "dir": "low"
+          },
+          {
+            "sheet": "Triiodothyronine (T3), Free",
+            "dir": "low"
+          }
+        ],
+        [
+          {
+            "sheet": "TSH",
+            "dir": "low"
+          },
+          {
+            "sheet": "T4,Free(Direct)",
+            "dir": "low"
+          }
+        ]
+      ],
+      "options": [
+        "CNS Serotonin deficiency → low TSH + serotonin-deficiency symptoms",
+        "CNS Dopamine deficiency → low TSH + dopamine-deficiency symptoms",
+        "Cytokine-promoted (IL-1, IL-6, IL-2, TNFα) — evaluate inflammation",
+        "Prolactin-promoted (low dopamine or progesterone deficiency)",
+        "Cortisol suppression — most commonly driven by dysglycemia"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Autoimmunity",
+      "summary": "Autoimmune attack on TPO or thyroglobulin (often presents with high TSH; if TSH is not high yet, autoimmunity may still be developing).",
+      "triggers": [
+        [
+          {
+            "sheet": "Thyroid Peroxidase (TPO) Ab",
+            "dir": "high"
+          }
+        ],
+        [
+          {
+            "sheet": "Thyroglobulin Antibody",
+            "dir": "high"
+          }
+        ]
+      ],
+      "options": [
+        "TPO autoimmune response (high TPO Ab) — Hashimoto's; can present hyperthyroid initially",
+        "Thyroglobulin autoimmune response (high Tgb Ab)",
+        "TSH-receptor autoimmune response (TSI/TR Ab) — causes hypo or hyper, Graves' disease; recommend TSI lab if hyperthyroid presentation",
+        "T3/T4 autoimmune response — uncommon; would require T3/T4 antibody labs"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Primary Hypothyroidism (non-autoimmune)",
+      "summary": "High TSH without elevated antibodies. May or may not have low downstream hormones. Commonly down-regulated TPO enzyme activity from progesterone or cofactor deficiencies. Note: monitor antibodies — may evolve into Cat 2 over time.",
+      "triggers": [
+        [
+          {
+            "sheet": "TSH",
+            "dir": "high"
+          },
+          {
+            "sheet": "Thyroid Peroxidase (TPO) Ab",
+            "dir": "notHigh"
+          },
+          {
+            "sheet": "Thyroglobulin Antibody",
+            "dir": "notHigh"
+          }
+        ]
+      ],
+      "options": [
+        "Progesterone deficiency (progesterone up-regulates TPO enzyme)",
+        "Cofactor deficiency (epinephrine/norepinephrine down-regulate TPO activity)"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Down-regulated 5-Deiodinase Activity (T4→T3 Conversion)",
+      "summary": "Normal T4 with low T3 — conversion issue. Drivers: cofactor deficiencies, GI dysbiosis, cytokines, cortisol, or peripheral serotonin/dopamine deficiencies. Up-regulation by testosterone or insulin can cause hormone resistance.",
+      "triggers": [
+        [
+          {
+            "sheet": "Thyroxine (T4)",
+            "dir": "normal"
+          },
+          {
+            "sheet": "Triiodothyronine (T3)",
+            "dir": "low"
+          }
+        ]
+      ],
+      "options": [
+        "Cofactor deficiency",
+        "GI dysbiosis / lipopolysaccharides (~20% of T4→T3 conversion happens in the gut)",
+        "Elevated cytokines (inflammation)",
+        "Elevated cortisol",
+        "Peripheral serotonin deficiency",
+        "Peripheral dopamine deficiency",
+        "Up-regulated 5-deiodinase from elevated testosterone (insulin surges, testosterone, testosterone creams) → hormone resistance from too much T4→T3"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Normal Totals with Low Free Hormones",
+      "summary": "Total hormones within range but free fraction depressed — bioavailability issue at the binding/cellular level. Correlate with Cat 4 (conversion) and Cat 6 (binding).",
+      "triggers": [
+        [
+          {
+            "sheet": "Thyroxine (T4)",
+            "dir": "normal"
+          },
+          {
+            "sheet": "T4,Free(Direct)",
+            "dir": "low"
+          }
+        ],
+        [
+          {
+            "sheet": "Triiodothyronine (T3)",
+            "dir": "normal"
+          },
+          {
+            "sheet": "Triiodothyronine (T3), Free",
+            "dir": "low"
+          }
+        ]
+      ],
+      "options": [
+        "Binding-globulin issue reducing free hormone fraction",
+        "Cellular uptake or membrane transport limitation",
+        "Evaluate alongside Cat 4 (5-deiodinase) if T3-related",
+        "Evaluate alongside Cat 6 (T3 Uptake) for binding-globulin involvement"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Receptor Site Resistance",
+      "summary": "Low T3 Uptake — binding/receptor issue at the tissue level. Resistance driven by inflammation, cortisol, homocysteine, or vitamin A deficiency. Common in autoimmune patients on replacement who still have thyroid symptoms.",
+      "triggers": [
+        [
+          {
+            "sheet": "T3 Uptake",
+            "dir": "low"
+          }
+        ]
+      ],
+      "options": [
+        "Elevated TBG → decreased free-hormone fraction (commonly from estrogen, OCPs, pregnancy, HRT)",
+        "Resistance from elevated inflammation (typical in autoimmune patients on replacement)",
+        "Resistance from elevated cortisol",
+        "Resistance from vitamin A deficiency (thyroid hormone transcription requires retinoic acid receptors)",
+        "Resistance from elevated homocysteine (dampens thyroid hormone expression; raised by antacids, oral contraceptives, estrogen)"
+      ]
+    }
+  ],
+  "APEX_COMPUTED_PATTERNS": [
+    {
+      "id": "inflammation",
+      "name": "Inflammation",
+      "tag": "Inflammatory",
+      "summary": "Patterns consistent with active inflammation. Correlate with clinical symptoms and consider broader inflammatory workup.",
+      "triggers": [
+        [
+          {
+            "sheet": "Homocyst(e)ine",
+            "dir": "high"
+          }
+        ],
+        [
+          {
+            "sheet": "C-Reactive Protein, Cardiac",
+            "dir": "high"
+          }
+        ],
+        [
+          {
+            "sheet": "Ferritin",
+            "dir": "high"
+          },
+          {
+            "sheet": "Iron",
+            "dir": "low"
+          }
+        ],
+        [
+          {
+            "sheet": "Monocytes",
+            "dir": "high"
+          }
+        ],
+        [
+          {
+            "rule": "nlRatioNear1to1"
+          }
+        ]
+      ],
+      "aux": [
+        {
+          "sheet": "Ferritin",
+          "dir": "high"
+        },
+        {
+          "sheet": "AST (SGOT)",
+          "dir": "high"
+        },
+        {
+          "sheet": "ALT (SGPT)",
+          "dir": "high"
+        },
+        {
+          "sheet": "GGT",
+          "dir": "high"
+        },
+        {
+          "sheet": "LDH",
+          "dir": "high"
+        },
+        {
+          "sheet": "Alkaline Phosphatase",
+          "dir": "high"
+        },
+        {
+          "sheet": "Globulin, Total",
+          "dir": "high"
+        }
+      ]
+    },
+    {
+      "id": "ironOverload",
+      "name": "Iron Overload",
+      "tag": "Iron",
+      "summary": "Pattern consistent with iron overload. Consider hereditary hemochromatosis workup if levels are markedly elevated.",
+      "triggers": [
+        [
+          {
+            "sheet": "Ferritin",
+            "dir": "high"
+          },
+          {
+            "sheet": "Iron",
+            "dir": "high"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "ironAmbiguous",
+      "name": "High Ferritin — Inflammation vs. Iron Overload (ambiguous)",
+      "tag": "Ambiguous",
+      "summary": "High ferritin with normal serum iron — could indicate either inflammation or early iron overload. Correlate with CRP, homocysteine, and clinical context.",
+      "triggers": [
+        [
+          {
+            "sheet": "Ferritin",
+            "dir": "high"
+          },
+          {
+            "sheet": "Iron",
+            "dir": "normal"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "insulinResistance",
+      "name": "Insulin Resistance / Dysglycemia",
+      "tag": "Metabolic",
+      "summary": "Insulin resistance pattern. Supporting markers (when flagged) confirm the picture: elevated triglycerides — especially if ≥ cholesterol — depressed HDL, elevated LDL, elevated uric acid, elevated glucose.",
+      "triggers": [
+        [
+          {
+            "sheet": "Insulin",
+            "dir": "high"
+          }
+        ],
+        [
+          {
+            "sheet": "Hemoglobin A1c",
+            "dir": "high"
+          }
+        ]
+      ],
+      "aux": [
+        {
+          "sheet": "Glucose",
+          "dir": "high"
+        },
+        {
+          "sheet": "Triglycerides",
+          "dir": "high"
+        },
+        {
+          "sheet": "LDL Chol Calc (NIH)",
+          "dir": "high"
+        },
+        {
+          "sheet": "HDL Cholesterol",
+          "dir": "low"
+        },
+        {
+          "sheet": "Uric Acid",
+          "dir": "high"
+        }
+      ]
+    },
+    {
+      "id": "vitaminDDeficiency",
+      "name": "Vitamin D Deficiency",
+      "tag": "Deficiency",
+      "summary": "25-hydroxy Vitamin D below functional range (≥50 ng/mL functional optimum). Consider supplementation to bring level into the 50–80 ng/mL range.",
+      "triggers": [
+        [
+          {
+            "sheet": "Vitamin D, 25-Hydroxy",
+            "dir": "low"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "fattyLiverNAFLD",
+      "name": "Possible NAFLD / MASLD (Early Stage)",
+      "tag": "Early Stage",
+      "summary": "AST:ALT ratio < 1 (ALT dominant). Typical pattern in early-stage non-alcoholic fatty liver disease (NAFLD / MASLD). ALT is usually the dominant enzyme in earlier stages.",
+      "triggers": [
+        [
+          {
+            "rule": "astAltRatioLessThan1"
+          }
+        ]
+      ],
+      "options": [
+        "Non-alcoholic fatty liver disease (NAFLD) — most common cause",
+        "Metabolic-associated steatotic liver disease (MASLD)",
+        "Insulin resistance / metabolic syndrome — correlate with glycemic markers",
+        "Hepatic steatosis from medications, weight, or diet"
+      ]
+    },
+    {
+      "id": "alcoholicLiverOrAdvancedFibrosis",
+      "name": "AST:ALT ≥ 2 — Alcoholic Liver Disease or Advanced Fibrosis",
+      "tag": "Advanced",
+      "summary": "AST:ALT ratio ≥ 2. Suggestive of alcoholic liver disease (AST rarely >500 in alcoholic hepatitis; ratio driven partly by pyridoxal-5-phosphate deficiency reducing ALT synthesis). In a patient with known NAFLD, this inversion often marks progression to advanced fibrosis or cirrhosis (incorporated into noninvasive scores like FIB-4).",
+      "triggers": [
+        [
+          {
+            "rule": "astAltRatioGreaterThanOrEqual2"
+          }
+        ]
+      ],
+      "options": [
+        "Alcohol use (including underreported intake)",
+        "Advanced fibrosis or cirrhosis from underlying MASLD",
+        "Muscle source of AST (rhabdomyolysis, strenuous exercise, statin myopathy) — check CK",
+        "Hemolysis",
+        "Wilson's disease",
+        "Hemochromatosis",
+        "Autoimmune hepatitis with cirrhotic features"
+      ]
+    }
+  ],
+  "APEX_THYROID_SHEET_MARKERS": [
+    "TSH",
+    "Thyroxine (T4)",
+    "T3 Uptake",
+    "Free Thyroxine Index",
+    "Triiodothyronine (T3)",
+    "Triiodothyronine (T3), Free",
+    "T4,Free(Direct)",
+    "Reverse T3, Serum",
+    "Thyroid Peroxidase (TPO) Ab",
+    "Thyroglobulin Antibody",
+    "Thyroxine Binding Globulin"
+  ],
+  "APEX_COMPUTED_PATTERN_MARKERS": [
+    "Homocyst(e)ine",
+    "C-Reactive Protein, Cardiac",
+    "Ferritin",
+    "Insulin",
+    "Hemoglobin A1c",
+    "Vitamin D, 25-Hydroxy"
+  ],
+  "APEX_NL_RATIO_LOW": 0.8,
+  "APEX_NL_RATIO_HIGH": 1.2,
+  "APEX_SYSTEM_GROUPS": [
+    {
+      "name": "Glycemic",
+      "markers": [
+        "Glucose",
+        "Hemoglobin A1c",
+        "Insulin"
+      ]
+    },
+    {
+      "name": "Lipid Panel",
+      "markers": [
+        "Cholesterol, Total",
+        "Triglycerides",
+        "LDL Chol Calc (NIH)",
+        "HDL Cholesterol",
+        "VLDL Cholesterol Cal"
+      ]
+    },
+    {
+      "name": "Inflammation",
+      "markers": [
+        "C-Reactive Protein, Cardiac",
+        "Homocyst(e)ine"
+      ]
+    },
+    {
+      "name": "Iron Panel",
+      "markers": [
+        "Iron",
+        "Ferritin",
+        "Iron Bind.Cap.(TIBC)",
+        "UIBC",
+        "Transferrin"
+      ]
+    },
+    {
+      "name": "Vitamin D",
+      "markers": [
+        "Vitamin D, 25-Hydroxy"
+      ]
+    },
+    {
+      "name": "Liver Markers",
+      "markers": [
+        "AST (SGOT)",
+        "ALT (SGPT)",
+        "GGT",
+        "LDH",
+        "Alkaline Phosphatase",
+        "Bilirubin, Total",
+        "Bilirubin, Direct",
+        "Bilirubin, Indirect"
+      ]
+    },
+    {
+      "name": "Kidney / Nitrogen",
+      "markers": [
+        "BUN",
+        "Creatinine",
+        "BUN/Creatinine Ratio",
+        "eGFR",
+        "Uric Acid"
+      ]
+    },
+    {
+      "name": "Protein",
+      "markers": [
+        "Protein, Total",
+        "Albumin",
+        "Globulin, Total"
+      ]
+    },
+    {
+      "name": "Electrolytes & Minerals",
+      "markers": [
+        "Sodium",
+        "Potassium",
+        "Chloride",
+        "Carbon Dioxide, Total",
+        "Calcium",
+        "Magnesium",
+        "Phosphorus"
+      ]
+    },
+    {
+      "name": "CBC — Red Cells",
+      "markers": [
+        "Hemoglobin",
+        "Hematocrit",
+        "RBC",
+        "MCV",
+        "MCH",
+        "MCHC",
+        "RDW",
+        "Platelets"
+      ]
+    },
+    {
+      "name": "CBC — White Cells / Differential",
+      "markers": [
+        "WBC",
+        "Neutrophils",
+        "Lymphs",
+        "Monocytes",
+        "Eos",
+        "Basos",
+        "Neutrophils (Absolute)",
+        "Lymphs (Absolute)",
+        "Monocytes(Absolute)",
+        "Eos (Absolute)",
+        "Baso (Absolute)",
+        "Immature Granulocytes",
+        "Immature Grans (Abs)"
+      ]
+    }
+  ],
+  "APEX_HANDOUTS": {
+    "dysglycemia": {
+      "name": "Blood Sugar Handout",
+      "intro": "Reference handout for patients with insulin resistance, dysglycemia, or reactive hypoglycemia patterns.",
+      "pageImageIds": [
+        "13s9TqeRxA8_jgyXM7ZUzLP_6QK5iGIwk",
+        "1hj0f2IimI8d9iO6x4OUvjPu20ElnVQ1z"
+      ]
+    }
+  }
+}

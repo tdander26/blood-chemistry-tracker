@@ -222,6 +222,7 @@ let tokenClient = null;
 let accessToken = null;            // short-lived, in memory only
 let pickedFile  = null;            // the LabCorp PDF File
 let parsedData  = null;            // cached parsePdf() result for the picked file
+let APEX        = null;            // report config (apex-markers.json + apex-data.json)
 
 /* ── auth (GIS) ───────────────────────────────────────────────────────── */
 function initAuth() {
@@ -351,8 +352,26 @@ async function uploadToDrive(blob, name, folderId) {
 }
 
 /* ============================================================================
-   Phase 3 STUBS — these get the real ports next.
+   Phase 3 — extraction + report. parsePdf is PORTED below; createPopulatedSheet,
+   buildReportHtml, updateTrends are still stubbed (need creds + ranges.json).
    ========================================================================== */
+
+// Apex report config, loaded as static assets (ready for the buildReportHtml port).
+async function loadApexConfig() {
+  try {
+    const [markers, config] = await Promise.all([
+      fetch('apex-markers.json').then(r => r.json()),
+      fetch('apex-data.json').then(r => r.json()),
+    ]);
+    APEX = Object.assign({ markers }, config);
+    log('Report config loaded (' + Object.keys(markers).length + ' markers · '
+        + APEX.APEX_THYROID_CATEGORIES.length + ' thyroid + '
+        + APEX.APEX_COMPUTED_PATTERNS.length + ' computed patterns).');
+  } catch (e) {
+    log('Report config not loaded (' + e.message + ') — needed for the Functional Report.', 'err');
+  }
+}
+
 // PORTED from index.html (position-aware PDF.js extraction). Pure: no DOM side
 // effects. Returns { patient, results, updates:[{cell,value}], numPages }.
 async function parsePdf(file) {
@@ -537,6 +556,7 @@ function wire() {
   }
   initAuth();
   loadPicker();
+  loadApexConfig();
   refreshUI();
 }
 async function setFile(file) {
