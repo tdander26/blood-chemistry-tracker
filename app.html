@@ -315,6 +315,24 @@ async function getOrCreateReportsFolder() {
   return created;
 }
 
+// Find or create the patient-named subfolder ("LastName, FirstName (DOB)") inside
+// the chosen folder, so each patient's files stay grouped (matches the Apps Script
+// app). Within drive.file the parent is app-created or Picker-selected, so we can
+// list/create its children.
+async function getOrCreatePatientFolder(parentId, patient) {
+  const token = await ensureToken();
+  const name = ((patient.name || 'Patient') + (patient.dob ? ' (' + patient.dob + ')' : '')).trim();
+  const q = "name='" + name.replace(/'/g, "\\'") + "' and '" + parentId +
+    "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
+  const list = await fetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) +
+    '&fields=files(id,name)', { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json());
+  if (list.files && list.files.length) return list.files[0];
+  return await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }),
+  }).then(r => r.json());
+}
+
 /* ── pdf-service calls (Phase 1 routes) ───────────────────────────────── */
 async function exportSheetPdf(spreadsheetId, gid, filename) {
   const token = await ensureToken();
@@ -479,11 +497,44 @@ async function parsePdf(file) {
 
   return { patient, results, updates, numPages: pdf.numPages };
 }
-async function createPopulatedSheet(parsed, name) {
-  // TODO(Phase 3): create the template in the user's Drive (ship template as a
-  // versioned .xlsx the app imports, OR Sheets API from a structure spec — keeps
-  // us within drive.file), then batch-write values. Returns { spreadsheetId, gid }.
-  throw new Error('createPopulatedSheet() not implemented yet (Phase 3)');
+// PORTED: import template.xlsx into the practitioner's Drive as a Google Sheet,
+// then batch-write the extracted values. Returns { spreadsheetId, gid }.
+// Stays within drive.file scope (the app creates the file, so it can read/write it).
+async function createPopulatedSheet(parsed, name, folder) {
+  const token = await ensureToken();
+
+  // 1. Fetch the versioned template (.xlsx) and import it, converting to a Sheet.
+  const xlsx = await fetch('template.xlsx').then(r => {
+    if (!r.ok) throw new Error('template.xlsx not found (' + r.status + ')');
+    return r.blob();
+  });
+  const meta = {
+    name: name || 'Blood Chemistry',
+    mimeType: 'application/vnd.google-apps.spreadsheet',     // convert xlsx → Google Sheet
+    parents: folder ? [folder.id] : undefined,
+  };
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+  form.append('file', new Blob([xlsx], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  const created = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form,
+  }).then(async r => { if (!r.ok) throw new Error('sheet import ' + r.status + ': ' + (await r.text()).slice(0, 200)); return r.json(); });
+  const spreadsheetId = created.id;
+
+  // 2. Find the tab (title + gid) of the imported sheet.
+  const info = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + spreadsheetId +
+    '?fields=sheets.properties(sheetId,title)', { headers: { Authorization: 'Bearer ' + token } })
+    .then(async r => { if (!r.ok) throw new Error('sheet meta ' + r.status); return r.json(); });
+  const tab = info.sheets[0].properties;
+
+  // 3. Batch-write the extracted cell values (B2/B3/E2/I2 + D-column markers).
+  const data = parsed.updates.map(u => ({ range: "'" + tab.title + "'!" + u.cell, values: [[u.value]] }));
+  await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + spreadsheetId + '/values:batchUpdate', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data }),
+  }).then(async r => { if (!r.ok) throw new Error('value write ' + r.status + ': ' + (await r.text()).slice(0, 200)); });
+
+  return { spreadsheetId, gid: tab.sheetId };
 }
 // PORTED: builds the Functional Analysis report HTML via apex-report.js
 // (ApexReport.gs port) from the parsed values + ranges.json + APEX config.
@@ -492,9 +543,9 @@ function buildReportHtml(parsed) {
   if (!APEX || !APEX.ranges) throw new Error('Report config (apex-data.json / ranges.json) not loaded');
   return ApexReport.build(parsed.patient, parsed.results, APEX.ranges, APEX);
 }
-async function updateTrends(parsed, folderId) {
-  // TODO(Phase 3): port ApexTrend.gs — longitudinal per-patient sheet.
-  throw new Error('updateTrends() not implemented yet (Phase 3)');
+async function updateTrends(parsed, folder) {
+  // TODO: port ApexTrend.gs — longitudinal per-patient trend sheet. Non-blocking.
+  throw new Error('updateTrends() not implemented yet');
 }
 
 /* ── orchestration ────────────────────────────────────────────────────── */
@@ -502,28 +553,31 @@ async function run() {
   try {
     $('goBtn').disabled = true;
     await ensureToken();
-    const folder = LS.folder || await getOrCreateReportsFolder();
-    log('Saving into: ' + (folder.name || folder.id));
-
     const parsed = parsedData || await parsePdf(pickedFile);
     log('Using ' + parsed.updates.length + ' extracted values'
         + (parsed.patient.name ? ' for ' + parsed.patient.name : ''));
 
+    const baseFolder = LS.folder || await getOrCreateReportsFolder();
+    const folder = await getOrCreatePatientFolder(baseFolder.id, parsed.patient);
+    log('Saving into: ' + folder.name);
+
     log('Building sheet…');
     const sheetName = ((parsed.patient.name || 'Patient') + ' ' + (parsed.patient.date || '')).trim().slice(0, 100);
-    const { spreadsheetId, gid } = await createPopulatedSheet(parsed, sheetName); // STUB
+    const { spreadsheetId, gid } = await createPopulatedSheet(parsed, sheetName, folder);
 
     log('Exporting styled sheet PDF…');
-    const sheetPdf = await exportSheetPdf(spreadsheetId, gid, 'Blood Chemistry');
-    await uploadToDrive(sheetPdf, 'Blood Chemistry.pdf', folder.id);
+    const sheetPdf = await exportSheetPdf(spreadsheetId, gid, sheetName);
+    await uploadToDrive(sheetPdf, sheetName + '.pdf', folder.id);
 
     log('Rendering Functional Report…');
     const reportHtml = buildReportHtml(parsed);
     const reportPdf = await renderReportPdf(reportHtml, parsed.patient && parsed.patient.name);
-    await uploadToDrive(reportPdf, 'Functional Analysis Report.pdf', folder.id);
+    await uploadToDrive(reportPdf, (parsed.patient.name || 'Patient') + ' — Functional Analysis Report.pdf', folder.id);
 
-    await updateTrends(parsed, folder.id);                    // STUB
-    log('Done — saved to your Drive.', 'ok');
+    // Trend tracker is non-blocking (matches the Apps Script app) — still a stub.
+    try { await updateTrends(parsed, folder); } catch (e) { log('Trends update skipped: ' + e.message); }
+
+    log('Done — saved to your Drive: ' + folder.name, 'ok');
   } catch (e) {
     log(e.message, 'err');
   } finally {
