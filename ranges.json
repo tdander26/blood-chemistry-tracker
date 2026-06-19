@@ -1,0 +1,581 @@
+{
+  "layout": "lab-first",
+  "markers": {
+    "Hemoglobin": {
+      "row": 7,
+      "units": "g/dL",
+      "fLow": 13.5,
+      "fHigh": 14.5,
+      "labLow": 11.1,
+      "labHigh": 15.9
+    },
+    "Hematocrit": {
+      "row": 8,
+      "units": "%",
+      "fLow": 37.0,
+      "fHigh": 40.0,
+      "labLow": 34.0,
+      "labHigh": 46.6
+    },
+    "RBC": {
+      "row": 9,
+      "units": "x10E6/uL",
+      "fLow": 3.9,
+      "fHigh": 4.5,
+      "labLow": 3.77,
+      "labHigh": 5.28
+    },
+    "MCV": {
+      "row": 10,
+      "units": "fL",
+      "fLow": 85.0,
+      "fHigh": 92.0,
+      "labLow": 79.0,
+      "labHigh": 97.0
+    },
+    "MCH": {
+      "row": 11,
+      "units": "pg",
+      "fLow": 27.7,
+      "fHigh": 32.0,
+      "labLow": 26.6,
+      "labHigh": 33.0
+    },
+    "MCHC": {
+      "row": 12,
+      "units": "g/dL",
+      "fLow": 32.0,
+      "fHigh": 36.0,
+      "labLow": 31.5,
+      "labHigh": 35.7
+    },
+    "RDW": {
+      "row": 13,
+      "units": "%",
+      "fLow": 11.7,
+      "fHigh": 15.0,
+      "labLow": 12.3,
+      "labHigh": 15.4
+    },
+    "Platelets": {
+      "row": 14,
+      "units": "K",
+      "fLow": 140.0,
+      "fHigh": 415.0,
+      "labLow": 150.0,
+      "labHigh": 379.0
+    },
+    "WBC": {
+      "row": 15,
+      "units": "x10E3/uL",
+      "fLow": 5.0,
+      "fHigh": 8.0,
+      "labLow": 3.4,
+      "labHigh": 10.8
+    },
+    "Neutrophils": {
+      "row": 16,
+      "units": "%",
+      "fLow": 40.0,
+      "fHigh": 60.0,
+      "labLow": 40.0,
+      "labHigh": 74.0
+    },
+    "Lymphs": {
+      "row": 17,
+      "units": "%",
+      "fLow": 25.0,
+      "fHigh": 40.0,
+      "labLow": 14.0,
+      "labHigh": 46.0
+    },
+    "Monocytes": {
+      "row": 18,
+      "units": "%",
+      "fLow": 4.0,
+      "fHigh": 7.0,
+      "labLow": 4.0,
+      "labHigh": 13.0
+    },
+    "Eos": {
+      "row": 19,
+      "units": "%",
+      "fLow": 0.0,
+      "fHigh": 3.0,
+      "labLow": 0.0,
+      "labHigh": 7.0
+    },
+    "Basos": {
+      "row": 20,
+      "units": "%",
+      "fLow": 0.0,
+      "fHigh": 3.0,
+      "labLow": 0.0,
+      "labHigh": 3.0
+    },
+    "Neutrophils (Absolute)": {
+      "row": 21,
+      "units": "x10E3/uL",
+      "fLow": 1.4,
+      "fHigh": 7.0,
+      "labLow": 1.4,
+      "labHigh": 7.0
+    },
+    "Lymphs (Absolute)": {
+      "row": 22,
+      "units": "x10E3/uL",
+      "fLow": 0.7,
+      "fHigh": 3.1,
+      "labLow": 0.7,
+      "labHigh": 3.1
+    },
+    "Monocytes(Absolute)": {
+      "row": 23,
+      "units": "x10E3/uL",
+      "fLow": 0.1,
+      "fHigh": 0.9,
+      "labLow": 0.1,
+      "labHigh": 0.9
+    },
+    "Eos (Absolute)": {
+      "row": 24,
+      "units": "x10E3/uL",
+      "fLow": 0.0,
+      "fHigh": 0.4,
+      "labLow": 0.0,
+      "labHigh": 0.4
+    },
+    "Baso (Absolute)": {
+      "row": 25,
+      "units": "x10E3/uL",
+      "fLow": 0.0,
+      "fHigh": 0.2,
+      "labLow": 0.0,
+      "labHigh": 0.2
+    },
+    "Immature Granulocytes": {
+      "row": 26,
+      "units": "%",
+      "fLow": 0.0,
+      "fHigh": 1.0,
+      "labLow": 0.0,
+      "labHigh": 1.0
+    },
+    "Immature Grans (Abs)": {
+      "row": 27,
+      "units": "x10E3/uL",
+      "fLow": 0.0,
+      "fHigh": 0.1,
+      "labLow": 0.0,
+      "labHigh": 0.1
+    },
+    "Glucose": {
+      "row": 30,
+      "units": "mg/dL",
+      "fLow": 85.0,
+      "fHigh": 99.0,
+      "labLow": 65.0,
+      "labHigh": 99.0
+    },
+    "Hemoglobin A1c": {
+      "row": 31,
+      "units": "%",
+      "fLow": 4.8,
+      "fHigh": 5.6,
+      "labLow": 4.8,
+      "labHigh": 5.6
+    },
+    "Insulin": {
+      "row": 32,
+      "units": "uIU/mL",
+      "fLow": 2.0,
+      "fHigh": 5.0,
+      "labLow": 2.6,
+      "labHigh": 24.9
+    },
+    "Cholesterol, Total": {
+      "row": 35,
+      "units": "mg/dL",
+      "fLow": 150.0,
+      "fHigh": 199.0,
+      "labLow": 100.0,
+      "labHigh": 200.0
+    },
+    "Triglycerides": {
+      "row": 36,
+      "units": "mg/dL",
+      "fLow": 75.0,
+      "fHigh": 100.0,
+      "labLow": 0.0,
+      "labHigh": 149.0
+    },
+    "LDL Chol Calc (NIH)": {
+      "row": 37,
+      "units": "mg/dL",
+      "fLow": 0.0,
+      "fHigh": 99.0,
+      "labLow": 0.0,
+      "labHigh": 100.0
+    },
+    "HDL Cholesterol": {
+      "row": 38,
+      "units": "mg/dL",
+      "fLow": 55.0,
+      "fHigh": 100.0,
+      "labLow": 40.0,
+      "labHigh": 1000.0
+    },
+    "VLDL Cholesterol Cal": {
+      "row": 40,
+      "units": "mg/dL",
+      "fLow": 5.0,
+      "fHigh": 40.0,
+      "labLow": 5.0,
+      "labHigh": 40.0
+    },
+    "Protein, Total": {
+      "row": 42,
+      "units": "g/dL",
+      "fLow": 6.9,
+      "fHigh": 7.4,
+      "labLow": 6.0,
+      "labHigh": 8.5
+    },
+    "Albumin": {
+      "row": 43,
+      "units": "g/dL",
+      "fLow": 4.0,
+      "fHigh": 5.0,
+      "labLow": 3.5,
+      "labHigh": 5.5
+    },
+    "Globulin, Total": {
+      "row": 44,
+      "units": "g/dL",
+      "fLow": 2.4,
+      "fHigh": 2.8,
+      "labLow": 1.5,
+      "labHigh": 4.5
+    },
+    "eGFR": {
+      "row": 47,
+      "units": "mL/min/1.73",
+      "fLow": 59.0,
+      "fHigh": 1000.0,
+      "labLow": 59.0,
+      "labHigh": 1000.0
+    },
+    "Uric Acid": {
+      "row": 49,
+      "units": "mg/dL",
+      "fLow": 3.2,
+      "fHigh": 5.5,
+      "labLow": 2.5,
+      "labHigh": 7.1
+    },
+    "BUN": {
+      "row": 50,
+      "units": "mg/dL",
+      "fLow": 13.0,
+      "fHigh": 18.0,
+      "labLow": 6.0,
+      "labHigh": 20.0
+    },
+    "Creatinine": {
+      "row": 51,
+      "units": "mg/dL",
+      "fLow": 0.65,
+      "fHigh": 0.9,
+      "labLow": 0.57,
+      "labHigh": 1.0
+    },
+    "BUN/Creatinine Ratio": {
+      "row": 52,
+      "units": "units",
+      "fLow": 10.0,
+      "fHigh": 20.0,
+      "labLow": 8.0,
+      "labHigh": 19.0
+    },
+    "AST (SGOT)": {
+      "row": 54,
+      "units": "IU/L",
+      "fLow": 10.0,
+      "fHigh": 26.0,
+      "labLow": 0.0,
+      "labHigh": 40.0
+    },
+    "ALT (SGPT)": {
+      "row": 55,
+      "units": "IU/L",
+      "fLow": 10.0,
+      "fHigh": 26.0,
+      "labLow": 0.0,
+      "labHigh": 32.0
+    },
+    "GGT": {
+      "row": 56,
+      "units": "IU/L",
+      "fLow": 10.0,
+      "fHigh": 60.0,
+      "labLow": 0.0,
+      "labHigh": 60.0
+    },
+    "LDH": {
+      "row": 57,
+      "units": "IU/L",
+      "fLow": 140.0,
+      "fHigh": 180.0,
+      "labLow": 119.0,
+      "labHigh": 226.0
+    },
+    "Alkaline Phosphatase": {
+      "row": 58,
+      "units": "U/L",
+      "fLow": 27.0,
+      "fHigh": 90.0,
+      "labLow": 39.0,
+      "labHigh": 117.0
+    },
+    "Bilirubin, Total": {
+      "row": 59,
+      "units": "mg/dL",
+      "fLow": 0.1,
+      "fHigh": 1.2,
+      "labLow": 0.0,
+      "labHigh": 1.2
+    },
+    "Bilirubin, Direct": {
+      "row": 60,
+      "units": "mg/dL",
+      "fLow": 0.0,
+      "fHigh": 0.3,
+      "labLow": 0.0,
+      "labHigh": 0.4
+    },
+    "Bilirubin, Indirect": {
+      "row": 61,
+      "units": "mg/dL",
+      "fLow": 0.1,
+      "fHigh": 0.8,
+      "labLow": 0.1,
+      "labHigh": 0.8
+    },
+    "Sodium": {
+      "row": 63,
+      "units": "mmol/L",
+      "fLow": 135.0,
+      "fHigh": 142.0,
+      "labLow": 134.0,
+      "labHigh": 144.0
+    },
+    "Potassium": {
+      "row": 64,
+      "units": "mmol/L",
+      "fLow": 4.0,
+      "fHigh": 4.5,
+      "labLow": 3.5,
+      "labHigh": 5.2
+    },
+    "Chloride": {
+      "row": 65,
+      "units": "mmol/L",
+      "fLow": 100.0,
+      "fHigh": 106.0,
+      "labLow": 96.0,
+      "labHigh": 106.0
+    },
+    "Carbon Dioxide, Total": {
+      "row": 66,
+      "units": "mmol/L",
+      "fLow": 25.0,
+      "fHigh": 30.0,
+      "labLow": 20.0,
+      "labHigh": 29.0
+    },
+    "Calcium": {
+      "row": 68,
+      "units": "mg/dL",
+      "fLow": 9.2,
+      "fHigh": 9.7,
+      "labLow": 8.7,
+      "labHigh": 10.2
+    },
+    "Magnesium": {
+      "row": 69,
+      "units": "mg/dL",
+      "fLow": 2.0,
+      "fHigh": 2.5,
+      "labLow": 1.6,
+      "labHigh": 2.3
+    },
+    "Phosphorus": {
+      "row": 70,
+      "units": "mg/dL",
+      "fLow": 3.0,
+      "fHigh": 4.0,
+      "labLow": 3.0,
+      "labHigh": 4.3
+    },
+    "Iron": {
+      "row": 72,
+      "units": "ug/dL",
+      "fLow": 85.0,
+      "fHigh": 130.0,
+      "labLow": 27.0,
+      "labHigh": 159.0
+    },
+    "Ferritin": {
+      "row": 73,
+      "units": "ng/mL",
+      "fLow": 45.0,
+      "fHigh": 122.0,
+      "labLow": 45.0,
+      "labHigh": 150.0
+    },
+    "Iron Bind.Cap.(TIBC)": {
+      "row": 74,
+      "units": "ug/dL",
+      "fLow": 250.0,
+      "fHigh": 370.0,
+      "labLow": 250.0,
+      "labHigh": 450.0
+    },
+    "UIBC": {
+      "row": 75,
+      "units": "ug/dL",
+      "fLow": 150.0,
+      "fHigh": 200.0,
+      "labLow": 131.0,
+      "labHigh": 425.0
+    },
+    "Transferrin": {
+      "row": 77,
+      "units": "mg/dL",
+      "fLow": 200.0,
+      "fHigh": 300.0,
+      "labLow": 192.0,
+      "labHigh": 364.0
+    },
+    "Vitamin D, 25-Hydroxy": {
+      "row": 79,
+      "units": "ng/mL",
+      "fLow": 50.0,
+      "fHigh": 100.0,
+      "labLow": 30.0,
+      "labHigh": 100.0
+    },
+    "Homocyst(e)ine": {
+      "row": 80,
+      "units": "umol/L",
+      "fLow": 0.0,
+      "fHigh": 6.5,
+      "labLow": 0.0,
+      "labHigh": 14.0
+    },
+    "C-Reactive Protein, Cardiac": {
+      "row": 81,
+      "units": "mg/L",
+      "fLow": 0.0,
+      "fHigh": 3.0,
+      "labLow": 0.0,
+      "labHigh": 3.0
+    },
+    "TSH": {
+      "row": 83,
+      "units": "mlU/L",
+      "fLow": 1.8,
+      "fHigh": 3.0,
+      "labLow": 0.45,
+      "labHigh": 4.5
+    },
+    "Thyroxine (T4)": {
+      "row": 84,
+      "units": "ug/dL",
+      "fLow": 6.0,
+      "fHigh": 12.0,
+      "labLow": 4.5,
+      "labHigh": 12.0
+    },
+    "T3 Uptake": {
+      "row": 85,
+      "units": "%",
+      "fLow": 27.0,
+      "fHigh": 37.0,
+      "labLow": 24.0,
+      "labHigh": 39.0
+    },
+    "Free Thyroxine Index": {
+      "row": 86,
+      "units": null,
+      "fLow": 1.8,
+      "fHigh": 3.8,
+      "labLow": 1.2,
+      "labHigh": 4.9
+    },
+    "Triiodothyronine (T3)": {
+      "row": 87,
+      "units": "ng/dL",
+      "fLow": 100.0,
+      "fHigh": 180.0,
+      "labLow": 71.0,
+      "labHigh": 180.0
+    },
+    "Triiodothyronine (T3), Free": {
+      "row": 88,
+      "units": "pg/mL",
+      "fLow": 3.0,
+      "fHigh": 4.0,
+      "labLow": 2.0,
+      "labHigh": 4.4
+    },
+    "T4,Free(Direct)": {
+      "row": 89,
+      "units": "ng/dL",
+      "fLow": 1.0,
+      "fHigh": 1.5,
+      "labLow": 0.82,
+      "labHigh": 1.77
+    },
+    "Reverse T3, Serum": {
+      "row": 90,
+      "units": "ng/dL",
+      "fLow": 9.0,
+      "fHigh": 15.0,
+      "labLow": 9.2,
+      "labHigh": 24.1
+    },
+    "Thyroid Peroxidase (TPO) Ab": {
+      "row": 91,
+      "units": "IU/mL",
+      "fLow": 0.0,
+      "fHigh": 34.0,
+      "labLow": 0.0,
+      "labHigh": 34.0
+    },
+    "Thyroglobulin Antibody": {
+      "row": 92,
+      "units": "IU/mL",
+      "fLow": 0.0,
+      "fHigh": 0.9,
+      "labLow": 0.0,
+      "labHigh": 0.9
+    },
+    "Thyroxine Binding Globulin": {
+      "row": 93,
+      "units": "ug/mL",
+      "fLow": 13.0,
+      "fHigh": 25.0,
+      "labLow": 13.0,
+      "labHigh": 39.0
+    },
+    "ANA by IFA Rfx Titer/Pattern": {
+      "row": 99,
+      "units": null,
+      "fLow": null,
+      "fHigh": null,
+      "labLow": null,
+      "labHigh": null
+    }
+  }
+}
