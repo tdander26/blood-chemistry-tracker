@@ -16,6 +16,10 @@ set -euo pipefail
 REGION="${REGION:-us-central1}"
 SERVICE="${SERVICE:-functional-report-pdf}"
 
+# OAuth client IDs whose Google logins may call the service (the browser app).
+# Defaults to the Blood Chemistry web client; override via env if needed.
+AUTH_AUDIENCES="${AUTH_AUDIENCES:-889613087652-fdt1omsivp2l2aqbm2mh4djjq2ekiqeh.apps.googleusercontent.com}"
+
 # Generate a strong token if none provided.
 if [[ -z "${AUTH_TOKEN:-}" ]]; then
   AUTH_TOKEN="$(openssl rand -hex 32)"
@@ -41,7 +45,7 @@ gcloud run deploy "$SERVICE" \
   --timeout 120 \
   --concurrency 4 \
   --max-instances 3 \
-  --set-env-vars "AUTH_TOKEN=$AUTH_TOKEN"
+  --set-env-vars "AUTH_TOKEN=$AUTH_TOKEN,AUTH_AUDIENCES=$AUTH_AUDIENCES"
 
 echo ""
 echo "Deployed. Service URL:"

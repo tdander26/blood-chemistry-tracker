@@ -19,6 +19,38 @@ app.use(express.json({ limit: '8mb' }));
 
 const AUTH_TOKEN = process.env.AUTH_TOKEN || '';
 
+// Comma-separated OAuth client IDs whose Google access tokens are accepted (in
+// addition to the shared AUTH_TOKEN). This lets the browser app call the service
+// with each practitioner's OWN Google login — so no shared secret ships in the
+// client. Leave unset to accept any valid Google token (less strict).
+const AUTH_AUDIENCES = (process.env.AUTH_AUDIENCES || '')
+  .split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+
+function bearerToken(req) {
+  return (req.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+}
+
+// Authorize a request. Accepts EITHER the shared AUTH_TOKEN (used by the Apps
+// Script backend — unchanged, so the live app keeps working) OR a valid Google
+// access token (used by the browser app). Google tokens are verified via
+// tokeninfo; if AUTH_AUDIENCES is set, the token's audience must match one of
+// our OAuth client IDs.
+async function authorize(req) {
+  const token = bearerToken(req);
+  if (!token) return false;
+  if (AUTH_TOKEN && token === AUTH_TOKEN) return true;
+  try {
+    const r = await fetch('https://oauth2.googleapis.com/tokeninfo?access_token=' + encodeURIComponent(token));
+    if (!r.ok) return false;
+    const info = await r.json();
+    if (info.expires_in !== undefined && Number(info.expires_in) <= 0) return false;
+    if (AUTH_AUDIENCES.length && AUTH_AUDIENCES.indexOf(info.aud) === -1) return false;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 // Reuse a single browser instance across requests (faster, lower memory churn).
 let browserPromise = null;
 function getBrowser() {
@@ -39,10 +71,8 @@ function getBrowser() {
 app.get('/health', (_req, res) => res.status(200).send('ok'));
 
 app.post('/render', async (req, res) => {
-  // ── Auth ──
-  const auth = req.get('Authorization') || '';
-  const token = auth.replace(/^Bearer\s+/i, '').trim();
-  if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
+  // ── Auth: shared token (Apps Script) or practitioner Google login (browser app) ──
+  if (!(await authorize(req))) {
     return res.status(401).send('Unauthorized');
   }
 
@@ -116,16 +146,17 @@ app.post('/render', async (req, res) => {
  *   Returns: application/pdf
  */
 app.post('/export-sheet', async (req, res) => {
-  // ── Service auth gate (same scheme as /render) ──
-  const auth = req.get('Authorization') || '';
-  const token = auth.replace(/^Bearer\s+/i, '').trim();
-  if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
+  // ── Auth: shared token or practitioner Google login ──
+  if (!(await authorize(req))) {
     return res.status(401).send('Unauthorized');
   }
 
-  const { spreadsheetId, gid, googleAccessToken, filename, params } = req.body || {};
+  const { spreadsheetId, gid, filename, params } = req.body || {};
+  // The export runs as the practitioner: prefer an explicit body token, else the
+  // bearer (which, for the browser app, IS the practitioner's Google token).
+  const googleAccessToken = (req.body && req.body.googleAccessToken) || bearerToken(req);
   if (!spreadsheetId || !googleAccessToken) {
-    return res.status(400).send('Missing "spreadsheetId" or "googleAccessToken"');
+    return res.status(400).send('Missing "spreadsheetId" or a Google access token');
   }
 
   // Defaults reproduce the exact layout the Apps Script backend produced
