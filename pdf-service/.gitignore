@@ -1,0 +1,5 @@
+node_modules/
+npm-debug.log*
+# Local fidelity-test output
+export-sheet-test.pdf
+*.local.pdf

@@ -1,0 +1,19 @@
+{
+  "name": "functional-report-pdf-service",
+  "version": "1.0.0",
+  "description": "Token-protected HTML to vector-PDF renderer (Puppeteer) for the Functional Analysis Report.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "puppeteer": "^23.6.0"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^23.11.1"
+  }
+}
