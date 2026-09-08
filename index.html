@@ -37,6 +37,19 @@
             padding: 24px;
         }
 
+        .other-app {
+            max-width: 1200px;
+            margin: 0 auto 16px;
+            padding: 10px 14px;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            background: #eff6ff;
+            color: #1e40af;
+            font-size: 13px;
+        }
+
+        .other-app a { color: #1d4ed8; font-weight: 600; }
+
         .app-header {
             text-align: center;
             margin-bottom: 32px;
@@ -456,6 +469,13 @@
         <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Developed by Todd Anderson DC, MS</p>
     </div>
 
+    <!-- Anyone who is not the account that deployed the Apps Script should be
+         using app.html instead — files land in their own Drive, no sharing. -->
+    <div class="other-app">
+        Not Dr. Anderson? Use <a href="app.html">the sign-in version</a> instead — you sign in with
+        your own Google account and every file saves to your own Drive.
+    </div>
+
     <div class="layout">
         <!-- Sidebar -->
         <div style="display: flex; flex-direction: column; gap: 16px;">
@@ -469,6 +489,11 @@
                 <div class="form-group">
                     <label>Sheet Tab Name</label>
                     <input type="text" id="sheetTabName" value="Blood Chemistry">
+                </div>
+                <div class="form-group">
+                    <label>Your Google Account</label>
+                    <input type="email" id="userEmail" placeholder="you@momentumhw.com" autocomplete="email">
+                    <div class="hint" id="userEmailHint"><i class="fas fa-user-lock"></i> The script runs as its owner, so results are shared with this address</div>
                 </div>
                 <div class="form-group">
                     <label>Apps Script Web App URL</label>
@@ -540,8 +565,32 @@
                 <li>Copy the <strong>Web app URL</strong> and paste it into the field on this page</li>
             </ol>
             <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;"><strong>Important:</strong> If you update the script, you must create a <strong>New deployment</strong> (not "Manage deployments") for changes to take effect.</p>
-            <pre id="appsScriptCode">function doPost(e) {
+            <pre id="appsScriptCode">/**
+ * Blood Chemistry Tracker — Google Apps Script
+ *
+ * Deploy as:
+ *   Type: Web app
+ *   Execute as: Me
+ *   Who has access: Anyone
+ *
+ * After deploying, paste the /exec URL into the app's
+ * "Apps Script Web App URL" field.
+ *
+ * Because the web app runs as the deploying account, every sheet and PDF it
+ * creates is owned by that account. A second practitioner using the app would
+ * otherwise land on "You need access" when they click the result link, so the
+ * app sends up a `userEmail` and this script grants that address edit access
+ * to both files before handing back the links.
+ *
+ * Required OAuth scopes (granted automatically on first deploy):
+ *   - https://www.googleapis.com/auth/drive
+ *   - https://www.googleapis.com/auth/spreadsheets
+ *   - https://www.googleapis.com/auth/script.external_request  (for PDF export)
+ */
+
+function doPost(e) {
   try {
+    // Accept both form-encoded (name=payload&amp;...) and raw JSON bodies
     var raw;
     if (e.parameter &amp;&amp; e.parameter.payload) {
       raw = e.parameter.payload;
@@ -550,6 +599,18 @@
     }
     var data = JSON.parse(raw);
 
+    // Who submitted this? Used both to share the results and to pin the links
+    // to the right Google account in a multi-account browser session.
+    var requester = String(data.userEmail || '').trim();
+    if (requester.indexOf('@') === -1) requester = '';
+
+    // The deploying account already owns everything this script creates, so
+    // sharing with itself is both pointless and an API error.
+    var owner = '';
+    try { owner = (Session.getEffectiveUser().getEmail() || '').trim(); } catch (ignore) {}
+    var needsShare = !!requester &amp;&amp; requester.toLowerCase() !== owner.toLowerCase();
+
+    // ── 1. Copy the template sheet ──────────────────────────────────────────
     var templateFile = DriveApp.getFileById(data.templateId);
     var newFile = templateFile.makeCopy(data.newSheetName);
     var newSs = SpreadsheetApp.openById(newFile.getId());
@@ -559,57 +620,128 @@
       return HtmlService.createHtmlOutput(
         '&lt;html&gt;&lt;body style="font-family:system-ui;text-align:center;padding:60px 20px;"&gt;' +
         '&lt;h2 style="color:#991b1b;"&gt;Sheet Tab Not Found&lt;/h2&gt;' +
-        '&lt;p&gt;Could not find a tab named "' + (data.sheetTabName || 'Blood Chemistry') + '"&lt;/p&gt;' +
+        '&lt;p&gt;Could not find a tab named "' + (data.sheetTabName || 'Blood Chemistry') + '" in the template.&lt;/p&gt;' +
         '&lt;/body&gt;&lt;/html&gt;'
       );
     }
 
+    // ── 2. Share the new sheet with whoever submitted it ─────────────────────
+    //    The file is owned by the deploying account; without this the submitter
+    //    can only file a "request access" ticket. Failures are non-fatal.
+    var sharedWith = '';
+    if (needsShare) {
+      try {
+        newFile.addEditor(requester);
+        sharedWith = requester;
+      } catch (shareErr) {
+        console.error('Could not share sheet with ' + requester + ': ' + shareErr.message);
+      }
+    }
+
+    // ── 3. Write all lab values ─────────────────────────────────────────────
     var updates = data.updates || [];
     for (var i = 0; i &lt; updates.length; i++) {
       sheet.getRange(updates[i].cell).setValue(updates[i].value);
     }
+
+    // Flush to ensure all writes are committed before PDF export
     SpreadsheetApp.flush();
 
+    // ── 4. Export sheet as PDF and save to Drive ────────────────────────────
+    //    Wrapped in try/catch — if PDF fails, the sheet link still works.
     var pdfUrl = '';
     try {
       var ssId = newSs.getId();
       var sheetId = sheet.getSheetId();
-      var pdfExportUrl = 'https://docs.google.com/spreadsheets/d/' + ssId +
-        '/export?format=pdf&amp;gid=' + sheetId +
-        '&amp;size=letter&amp;portrait=true&amp;fitw=true' +
-        '&amp;sheetnames=false&amp;printtitle=false&amp;pagenumbers=false' +
-        '&amp;gridlines=false&amp;fzr=false';
-      var token = ScriptApp.getOAuthToken();
+
+      var pdfExportUrl =
+        'https://docs.google.com/spreadsheets/d/' + ssId +
+        '/export?format=pdf' +
+        '&amp;gid='         + sheetId +
+        '&amp;size=letter' +
+        '&amp;portrait=true' +
+        '&amp;scale=4' +
+        '&amp;top_margin=0.5' +
+        '&amp;bottom_margin=0.5' +
+        '&amp;left_margin=0.5' +
+        '&amp;right_margin=0.5' +
+        '&amp;horizontal_alignment=CENTER' +
+        '&amp;vertical_alignment=TOP' +
+        '&amp;sheetnames=false' +
+        '&amp;printtitle=false' +
+        '&amp;pagenumbers=false' +
+        '&amp;gridlines=false' +
+        '&amp;fzr=false';
+
+      var token    = ScriptApp.getOAuthToken();
       var response = UrlFetchApp.fetch(pdfExportUrl, {
         headers: { 'Authorization': 'Bearer ' + token },
         muteHttpExceptions: true
       });
+
       if (response.getResponseCode() === 200) {
         var pdfBlob = response.getBlob().setName(data.newSheetName + '.pdf');
+
+        // Save into "Blood Chemistry Reports" folder (created if absent)
         var folders = DriveApp.getFoldersByName('Blood Chemistry Reports');
-        var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder('Blood Chemistry Reports');
-        pdfUrl = folder.createFile(pdfBlob).getUrl();
+        var folder  = folders.hasNext()
+          ? folders.next()
+          : DriveApp.createFolder('Blood Chemistry Reports');
+
+        var pdfFile = folder.createFile(pdfBlob);
+        pdfUrl = pdfFile.getUrl();
+
+        // Same access problem as the sheet — share the PDF too.
+        if (needsShare) {
+          try {
+            pdfFile.addEditor(requester);
+          } catch (pdfShareErr) {
+            console.error('Could not share PDF with ' + requester + ': ' + pdfShareErr.message);
+          }
+        }
       }
     } catch (pdfErr) {
       console.error('PDF export failed: ' + pdfErr.message);
     }
 
-    var pdfLink = pdfUrl
-      ? '&lt;p style="margin-top:12px;"&gt;&lt;a href="' + pdfUrl + '" style="color:#2563eb;font-size:13px;"&gt;View saved PDF in Drive&lt;/a&gt;&lt;/p&gt;'
+    // ── 5. Return success page ──────────────────────────────────────────────
+    // Pin links to the account that submitted the labs so multi-account Chrome
+    // sessions don't misroute them. Falls back to the deploying account.
+    var authEmail = requester || owner;
+    var authParam = authEmail ? ('authuser=' + encodeURIComponent(authEmail)) : 'authuser=0';
+    var sheetHref = newSs.getUrl() + (newSs.getUrl().indexOf('?') === -1 ? '?' : '&amp;') + authParam;
+    var pdfHref   = pdfUrl ? (pdfUrl + (pdfUrl.indexOf('?') === -1 ? '?' : '&amp;') + authParam) : '';
+
+    var pdfLink = pdfHref
+      ? '&lt;p style="margin-top:12px;"&gt;' +
+          '&lt;a href="' + pdfHref + '" target="_blank" rel="noopener" style="color:#2563eb;font-size:13px;"&gt;' +
+          'View saved PDF in Drive&lt;/a&gt;&lt;/p&gt;'
       : '';
+
+    var shareNote = '';
+    if (sharedWith) {
+      shareNote = '&lt;p style="margin-top:16px;color:#065f46;font-size:12px;"&gt;Shared with ' + sharedWith + '&lt;/p&gt;';
+    } else if (needsShare) {
+      shareNote = '&lt;p style="margin-top:16px;color:#991b1b;font-size:12px;"&gt;Could not share with ' +
+        requester + ' — ask ' + (owner || 'the account owner') + ' to share it manually.&lt;/p&gt;';
+    }
 
     return HtmlService.createHtmlOutput(
       '&lt;html&gt;&lt;body style="font-family:system-ui;text-align:center;padding:60px 20px;"&gt;' +
-      '&lt;div style="font-size:48px;margin-bottom:16px;"&gt;&#x2705;&lt;/div&gt;' +
+      '&lt;div style="font-size:48px;margin-bottom:16px;"&gt;✅&lt;/div&gt;' +
       '&lt;h2 style="color:#065f46;"&gt;Spreadsheet Created!&lt;/h2&gt;' +
       '&lt;p style="color:#333;margin:12px 0;"&gt;&lt;strong&gt;' + data.newSheetName + '&lt;/strong&gt;&lt;/p&gt;' +
       '&lt;p style="color:#666;"&gt;' + updates.length + ' values populated&lt;/p&gt;' +
-      '&lt;a href="' + newSs.getUrl() + '" style="display:inline-block;margin-top:20px;padding:12px 32px;background:#2563eb;color:white;text-decoration:none;border-radius:8px;font-weight:600;"&gt;Open Spreadsheet&lt;/a&gt;' +
+      '&lt;a href="' + sheetHref + '" target="_blank" rel="noopener" style="display:inline-block;margin-top:20px;padding:12px 32px;' +
+        'background:#2563eb;color:white;text-decoration:none;border-radius:8px;font-weight:600;"&gt;' +
+        'Open Spreadsheet&lt;/a&gt;' +
       pdfLink +
+      shareNote +
       '&lt;p style="margin-top:20px;color:#999;font-size:12px;"&gt;You can close this tab when done&lt;/p&gt;' +
       '&lt;/body&gt;&lt;/html&gt;'
     );
-  } catch(err) {
+
+  } catch (err) {
     return HtmlService.createHtmlOutput(
       '&lt;html&gt;&lt;body style="font-family:system-ui;text-align:center;padding:60px 20px;"&gt;' +
       '&lt;h2 style="color:#991b1b;"&gt;Error&lt;/h2&gt;' +
@@ -619,10 +751,11 @@
   }
 }
 
+// Health-check endpoint — confirms the script URL is correct
 function doGet(e) {
-  return ContentService.createTextOutput(
-    JSON.stringify({status: 'ok'})
-  ).setMimeType(ContentService.MimeType.JSON);
+  return ContentService
+    .createTextOutput(JSON.stringify({ status: 'ok' }))
+    .setMimeType(ContentService.MimeType.JSON);
 }</pre>
             <button class="btn btn-primary" onclick="copyScriptCode()">
                 <i class="fas fa-copy"></i> Copy Script Code
@@ -979,6 +1112,14 @@ function doGet(e) {
                 return;
             }
 
+            const userEmail = document.getElementById('userEmail').value.trim();
+            if (!isValidEmail(userEmail)) {
+                showStatus('<i class="fas fa-exclamation-circle"></i> Enter your Google account email first — the new sheet is created by the script owner\u2019s account and has to be shared with you.', 'error');
+                document.getElementById('userEmail').focus();
+                return;
+            }
+            localStorage.setItem('bcUserEmail', userEmail);
+
             const spreadsheetId = document.getElementById('templateSheetId').value;
             const sheetName = document.getElementById('sheetTabName').value;
             const newName = `${patientInfo.name || 'Patient'} ${patientInfo.date || new Date().toISOString().split('T')[0]}`.substring(0, 100);
@@ -998,6 +1139,7 @@ function doGet(e) {
                 templateId: spreadsheetId,
                 sheetTabName: sheetName,
                 newSheetName: newName,
+                userEmail: userEmail,
                 updates: updates
             });
 
@@ -1064,90 +1206,9 @@ function doGet(e) {
         }
 
         function copyScriptCode() {
-            const code = `function doPost(e) {
-  try {
-    var raw;
-    if (e.parameter && e.parameter.payload) {
-      raw = e.parameter.payload;
-    } else if (e.postData && e.postData.contents) {
-      raw = e.postData.contents;
-    }
-    var data = JSON.parse(raw);
-
-    var templateFile = DriveApp.getFileById(data.templateId);
-    var newFile = templateFile.makeCopy(data.newSheetName);
-    var newSs = SpreadsheetApp.openById(newFile.getId());
-    var sheet = newSs.getSheetByName(data.sheetTabName || 'Blood Chemistry');
-
-    if (!sheet) {
-      return HtmlService.createHtmlOutput(
-        '<html><body style="font-family:system-ui;text-align:center;padding:60px 20px;">' +
-        '<h2 style="color:#991b1b;">Sheet Tab Not Found</h2>' +
-        '<p>Could not find a tab named "' + (data.sheetTabName || 'Blood Chemistry') + '"</p>' +
-        '</body></html>'
-      );
-    }
-
-    var updates = data.updates || [];
-    for (var i = 0; i < updates.length; i++) {
-      sheet.getRange(updates[i].cell).setValue(updates[i].value);
-    }
-    SpreadsheetApp.flush();
-
-    var pdfUrl = '';
-    try {
-      var ssId = newSs.getId();
-      var sheetId = sheet.getSheetId();
-      var pdfExportUrl = 'https://docs.google.com/spreadsheets/d/' + ssId +
-        '/export?format=pdf&gid=' + sheetId +
-        '&size=letter&portrait=true&fitw=true' +
-        '&sheetnames=false&printtitle=false&pagenumbers=false' +
-        '&gridlines=false&fzr=false';
-      var token = ScriptApp.getOAuthToken();
-      var response = UrlFetchApp.fetch(pdfExportUrl, {
-        headers: { 'Authorization': 'Bearer ' + token },
-        muteHttpExceptions: true
-      });
-      if (response.getResponseCode() === 200) {
-        var pdfBlob = response.getBlob().setName(data.newSheetName + '.pdf');
-        var folders = DriveApp.getFoldersByName('Blood Chemistry Reports');
-        var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder('Blood Chemistry Reports');
-        pdfUrl = folder.createFile(pdfBlob).getUrl();
-      }
-    } catch (pdfErr) {
-      console.error('PDF export failed: ' + pdfErr.message);
-    }
-
-    var pdfLink = pdfUrl
-      ? '<p style="margin-top:12px;"><a href="' + pdfUrl + '" style="color:#2563eb;font-size:13px;">View saved PDF in Drive</a></p>'
-      : '';
-
-    return HtmlService.createHtmlOutput(
-      '<html><body style="font-family:system-ui;text-align:center;padding:60px 20px;">' +
-      '<div style="font-size:48px;margin-bottom:16px;">\\u2705</div>' +
-      '<h2 style="color:#065f46;">Spreadsheet Created!</h2>' +
-      '<p style="color:#333;margin:12px 0;"><strong>' + data.newSheetName + '</strong></p>' +
-      '<p style="color:#666;">' + updates.length + ' values populated</p>' +
-      '<a href="' + newSs.getUrl() + '" style="display:inline-block;margin-top:20px;padding:12px 32px;background:#2563eb;color:white;text-decoration:none;border-radius:8px;font-weight:600;">Open Spreadsheet</a>' +
-      pdfLink +
-      '<p style="margin-top:20px;color:#999;font-size:12px;">You can close this tab when done</p>' +
-      '</body></html>'
-    );
-  } catch(err) {
-    return HtmlService.createHtmlOutput(
-      '<html><body style="font-family:system-ui;text-align:center;padding:60px 20px;">' +
-      '<h2 style="color:#991b1b;">Error</h2>' +
-      '<p style="color:#666;">' + err.message + '</p>' +
-      '</body></html>'
-    );
-  }
-}
-
-function doGet(e) {
-  return ContentService.createTextOutput(
-    JSON.stringify({status: 'ok'})
-  ).setMimeType(ContentService.MimeType.JSON);
-}`;
+            // Read the listing above rather than keeping a second copy of the
+            // script in this file — they used to drift apart.
+            const code = document.getElementById('appsScriptCode').textContent;
             navigator.clipboard.writeText(code).then(() => {
                 showToast('Apps Script code copied!');
             });
@@ -1166,9 +1227,21 @@ function doGet(e) {
             el.className = `status-bar show ${type}`;
         }
 
-        // Clear any stale localStorage URL on load
+        function isValidEmail(value) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
+            // Clear any stale localStorage URL on load
             localStorage.removeItem('appsScriptUrl');
+
+            // Restore the practitioner's email so it is only typed once per device
+            const emailField = document.getElementById('userEmail');
+            emailField.value = localStorage.getItem('bcUserEmail') || '';
+            emailField.addEventListener('change', () => {
+                const v = emailField.value.trim();
+                if (isValidEmail(v)) localStorage.setItem('bcUserEmail', v);
+            });
         });
     </script>
 </body>

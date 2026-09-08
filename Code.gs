@@ -9,6 +9,12 @@
  * After deploying, paste the /exec URL into the app's
  * "Apps Script Web App URL" field.
  *
+ * Because the web app runs as the deploying account, every sheet and PDF it
+ * creates is owned by that account. A second practitioner using the app would
+ * otherwise land on "You need access" when they click the result link, so the
+ * app sends up a `userEmail` and this script grants that address edit access
+ * to both files before handing back the links.
+ *
  * Required OAuth scopes (granted automatically on first deploy):
  *   - https://www.googleapis.com/auth/drive
  *   - https://www.googleapis.com/auth/spreadsheets
@@ -26,6 +32,17 @@ function doPost(e) {
     }
     var data = JSON.parse(raw);
 
+    // Who submitted this? Used both to share the results and to pin the links
+    // to the right Google account in a multi-account browser session.
+    var requester = String(data.userEmail || '').trim();
+    if (requester.indexOf('@') === -1) requester = '';
+
+    // The deploying account already owns everything this script creates, so
+    // sharing with itself is both pointless and an API error.
+    var owner = '';
+    try { owner = (Session.getEffectiveUser().getEmail() || '').trim(); } catch (ignore) {}
+    var needsShare = !!requester && requester.toLowerCase() !== owner.toLowerCase();
+
     // ── 1. Copy the template sheet ──────────────────────────────────────────
     var templateFile = DriveApp.getFileById(data.templateId);
     var newFile = templateFile.makeCopy(data.newSheetName);
@@ -41,7 +58,20 @@ function doPost(e) {
       );
     }
 
-    // ── 2. Write all lab values ─────────────────────────────────────────────
+    // ── 2. Share the new sheet with whoever submitted it ─────────────────────
+    //    The file is owned by the deploying account; without this the submitter
+    //    can only file a "request access" ticket. Failures are non-fatal.
+    var sharedWith = '';
+    if (needsShare) {
+      try {
+        newFile.addEditor(requester);
+        sharedWith = requester;
+      } catch (shareErr) {
+        console.error('Could not share sheet with ' + requester + ': ' + shareErr.message);
+      }
+    }
+
+    // ── 3. Write all lab values ─────────────────────────────────────────────
     var updates = data.updates || [];
     for (var i = 0; i < updates.length; i++) {
       sheet.getRange(updates[i].cell).setValue(updates[i].value);
@@ -50,7 +80,7 @@ function doPost(e) {
     // Flush to ensure all writes are committed before PDF export
     SpreadsheetApp.flush();
 
-    // ── 3. Export sheet as PDF and save to Drive ────────────────────────────
+    // ── 4. Export sheet as PDF and save to Drive ────────────────────────────
     //    Wrapped in try/catch — if PDF fails, the sheet link still works.
     var pdfUrl = '';
     try {
@@ -91,16 +121,26 @@ function doPost(e) {
           ? folders.next()
           : DriveApp.createFolder('Blood Chemistry Reports');
 
-        pdfUrl = folder.createFile(pdfBlob).getUrl();
+        var pdfFile = folder.createFile(pdfBlob);
+        pdfUrl = pdfFile.getUrl();
+
+        // Same access problem as the sheet — share the PDF too.
+        if (needsShare) {
+          try {
+            pdfFile.addEditor(requester);
+          } catch (pdfShareErr) {
+            console.error('Could not share PDF with ' + requester + ': ' + pdfShareErr.message);
+          }
+        }
       }
     } catch (pdfErr) {
       console.error('PDF export failed: ' + pdfErr.message);
     }
 
-    // ── 4. Return success page ──────────────────────────────────────────────
-    // Pin links to the deploying account so multi-account Chrome sessions don't misroute them.
-    var authEmail = '';
-    try { authEmail = Session.getActiveUser().getEmail() || ''; } catch (ignore) {}
+    // ── 5. Return success page ──────────────────────────────────────────────
+    // Pin links to the account that submitted the labs so multi-account Chrome
+    // sessions don't misroute them. Falls back to the deploying account.
+    var authEmail = requester || owner;
     var authParam = authEmail ? ('authuser=' + encodeURIComponent(authEmail)) : 'authuser=0';
     var sheetHref = newSs.getUrl() + (newSs.getUrl().indexOf('?') === -1 ? '?' : '&') + authParam;
     var pdfHref   = pdfUrl ? (pdfUrl + (pdfUrl.indexOf('?') === -1 ? '?' : '&') + authParam) : '';
@@ -111,9 +151,17 @@ function doPost(e) {
           'View saved PDF in Drive</a></p>'
       : '';
 
+    var shareNote = '';
+    if (sharedWith) {
+      shareNote = '<p style="margin-top:16px;color:#065f46;font-size:12px;">Shared with ' + sharedWith + '</p>';
+    } else if (needsShare) {
+      shareNote = '<p style="margin-top:16px;color:#991b1b;font-size:12px;">Could not share with ' +
+        requester + ' — ask ' + (owner || 'the account owner') + ' to share it manually.</p>';
+    }
+
     return HtmlService.createHtmlOutput(
       '<html><body style="font-family:system-ui;text-align:center;padding:60px 20px;">' +
-      '<div style="font-size:48px;margin-bottom:16px;">\u2705</div>' +
+      '<div style="font-size:48px;margin-bottom:16px;">✅</div>' +
       '<h2 style="color:#065f46;">Spreadsheet Created!</h2>' +
       '<p style="color:#333;margin:12px 0;"><strong>' + data.newSheetName + '</strong></p>' +
       '<p style="color:#666;">' + updates.length + ' values populated</p>' +
@@ -121,6 +169,7 @@ function doPost(e) {
         'background:#2563eb;color:white;text-decoration:none;border-radius:8px;font-weight:600;">' +
         'Open Spreadsheet</a>' +
       pdfLink +
+      shareNote +
       '<p style="margin-top:20px;color:#999;font-size:12px;">You can close this tab when done</p>' +
       '</body></html>'
     );
