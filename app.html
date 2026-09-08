@@ -72,6 +72,12 @@
              font-weight:700; margin-bottom:8px; }
     .warn { background:var(--err-bg); color:var(--err-text); border:1px solid #fecaca;
             border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:16px; display:none; }
+    .result { margin-top:14px; padding:14px 16px; border-radius:10px; font-size:14px; }
+    .result.busy { background:var(--bg); color:var(--muted); border:1px solid var(--border); }
+    .result.ok   { background:var(--ok-bg); color:var(--ok-text); border:1px solid #a7f3d0; }
+    .result.err  { background:var(--err-bg); color:var(--err-text); border:1px solid #fecaca; }
+    .result strong { display:block; font-size:15px; margin-bottom:4px; }
+    .result a { color:inherit; font-weight:600; text-decoration:underline; }
     .note { background:#fffbeb; color:#92400e; border:1px solid #fde68a;
             border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:16px; display:none; }
   </style>
@@ -109,6 +115,11 @@
       <div class="row">
         <button id="goBtn" class="go" disabled>Generate &amp; save to my Drive</button>
       </div>
+      <!-- The old Apps Script app popped a whole new tab with a big green
+           checkmark on success. This one only wrote to the Activity log below,
+           which reads as "the button does nothing" if you're not staring at
+           small monospace text. This banner is the equivalent confirmation. -->
+      <div id="resultBanner" class="result" hidden></div>
     </div>
 
     <div class="card">
@@ -218,6 +229,10 @@ function log(msg, kind) {
   const tag = kind === 'err' ? '✗ ' : kind === 'ok' ? '✓ ' : '· ';
   el.textContent += '\n' + tag + msg;
   el.scrollTop = el.scrollHeight;
+}
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 function configReady() {
   return !Object.values(CONFIG).some(v => typeof v === 'string' && v.indexOf('PASTE') === 0 || (typeof v === 'string' && v.indexOf('XXXX') > -1));
@@ -594,7 +609,15 @@ async function updateTrends(parsed, folder) {
 }
 
 /* ── orchestration ────────────────────────────────────────────────────── */
+function showResult(kind, html) {
+  const el = $('resultBanner');
+  el.className = 'result ' + kind;
+  el.innerHTML = html;
+  el.hidden = false;
+}
+
 async function run() {
+  showResult('busy', 'Working — this takes a few seconds, watch the Activity log below for progress…');
   try {
     $('goBtn').disabled = true;
     await ensureToken();
@@ -639,8 +662,17 @@ async function run() {
     log('Saved to your Drive: ' + folder.name
         + (skipped.length ? ' — without the ' + skipped.join(' or the ') + '.' : ''),
         skipped.length ? 'err' : 'ok');
+
+    const folderUrl = 'https://drive.google.com/drive/folders/' + folder.id;
+    showResult(skipped.length ? 'err' : 'ok',
+      '<strong>' + (skipped.length ? 'Saved, with gaps' : 'Saved to your Drive') + '</strong>' +
+      'Sheet + PDF' + (skipped.length ? '' : ' + Functional Report + trend tracker') +
+      ' in <a href="' + folderUrl + '" target="_blank" rel="noopener">' + esc(folder.name) + '</a>.' +
+      (skipped.length ? ' Skipped: ' + skipped.join(', ') + ' — see the Activity log below for why.' : ''));
   } catch (e) {
     log(e.message, 'err');
+    showResult('err', '<strong>Did not save</strong>' + esc(e.message) +
+      ' — see the Activity log below for the full trace.');
   } finally {
     $('goBtn').disabled = false;
   }
