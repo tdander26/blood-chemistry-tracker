@@ -37,6 +37,19 @@
             padding: 24px;
         }
 
+        .other-app {
+            max-width: 1200px;
+            margin: 0 auto 16px;
+            padding: 10px 14px;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            background: #eff6ff;
+            color: #1e40af;
+            font-size: 13px;
+        }
+
+        .other-app a { color: #1d4ed8; font-weight: 600; }
+
         .app-header {
             text-align: center;
             margin-bottom: 32px;
@@ -454,6 +467,13 @@
         <h1>Blood Chemistry PDF to Sheets</h1>
         <p>Upload a Labcorp PDF, review extracted values, then push to Google Sheets</p>
         <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Developed by Todd Anderson DC, MS</p>
+    </div>
+
+    <!-- Anyone who is not the account that deployed the Apps Script should be
+         using app.html instead — files land in their own Drive, no sharing. -->
+    <div class="other-app">
+        Not Dr. Anderson? Use <a href="app.html">the sign-in version</a> instead — you sign in with
+        your own Google account and every file saves to your own Drive.
     </div>
 
     <div class="layout">
