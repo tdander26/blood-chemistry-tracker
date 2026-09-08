@@ -30,7 +30,38 @@ Open `index.html` in a browser and fill in:
 
 The "Setup guide" link inside the app walks through this as well.
 
-## Multiple practitioners
+## Two apps in this repo
+
+| Page | How it works | Where files land |
+|------|--------------|------------------|
+| `index.html` | Apps Script web app, deployed **Execute as: Me** | The deploying account's Drive |
+| `app.html` | Each practitioner signs in with their own Google account (GIS + Drive/Sheets API) | **That practitioner's own Drive** |
+
+`app.html` is the one to hand a second practitioner: nothing is owned by anyone
+else, so there is no sharing step and no "request access" wall. Live at
+`/blood-chemistry-tracker/app.html`.
+
+### Before a new practitioner can sign in to `app.html`
+
+The OAuth client is almost certainly in **Testing** mode. Add their address
+under Google Cloud console → *Google Auth Platform → Audience → Test users*.
+The app requests short-lived access tokens per session and keeps no refresh
+tokens, so the 7-day refresh-token expiry that normally makes Testing mode
+painful does not apply here.
+
+Publishing the app instead would need Google verification, because
+`.../auth/spreadsheets` is a sensitive scope (`drive.file` alone is not).
+
+### `apex-markers.json`
+
+`app.html` fetches `apex-markers.json` for the per-marker clinical cause lists.
+**That file is not in this repo** — it lives in the Apps Script project. Without
+it the app still saves the populated sheet, the styled sheet PDF and the trend
+tracker, shows a banner, and skips the Functional Analysis Report rather than
+rendering one whose cause analysis is blank. Drop the file in beside
+`apex-data.json` and the report starts working with no code change.
+
+## Multiple practitioners (`index.html` only)
 
 The web app is deployed with **Execute as: Me**, so every sheet and PDF it
 creates is owned by the deploying account — not by whoever pushed the labs. A

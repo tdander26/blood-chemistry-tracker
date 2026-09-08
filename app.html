@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Blood Chemistry — Client Rewrite (WIP)</title>
+  <title>Blood Chemistry — your Drive</title>
 
   <!--
     ============================================================================
@@ -72,14 +72,17 @@
              font-weight:700; margin-bottom:8px; }
     .warn { background:var(--err-bg); color:var(--err-text); border:1px solid #fecaca;
             border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:16px; display:none; }
+    .note { background:#fffbeb; color:#92400e; border:1px solid #fde68a;
+            border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:16px; display:none; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>Blood Chemistry — your Drive</h1>
-    <div class="sub">Per-practitioner rewrite (work in progress). Each report saves to <em>your</em> Google Drive.</div>
+    <div class="sub">Sign in with your own Google account — every sheet and PDF saves to <em>your</em> Drive.</div>
 
     <div id="configWarn" class="warn"></div>
+    <div id="configNote" class="note"></div>
 
     <!-- ── Connection ───────────────────────────────────────────────── -->
     <div class="card">
@@ -378,22 +381,54 @@ async function uploadToDrive(blob, name, folderId) {
    buildReportHtml, updateTrends are still stubbed (need creds + ranges.json).
    ========================================================================== */
 
-// Apex report config, loaded as static assets (ready for the buildReportHtml port).
+// Apex report config, loaded as static assets.
+//
+// These are fetched independently on purpose. apex-markers.json holds the
+// per-marker clinical cause lists and is the one asset that is NOT in this
+// repo; loading all three with Promise.all meant its 404 also discarded
+// apex-data.json and ranges.json, which are present and are all the sheet,
+// the styled PDF and the trend tracker need. Missing markers now degrades to
+// "no Functional Report" instead of "nothing works".
+async function fetchJson(name) {
+  const r = await fetch(name);
+  if (!r.ok) throw new Error(name + ' (' + r.status + ')');
+  return r.json();
+}
+
 async function loadApexConfig() {
+  let config, ranges;
   try {
-    const [markers, config, ranges] = await Promise.all([
-      fetch('apex-markers.json').then(r => r.json()),
-      fetch('apex-data.json').then(r => r.json()),
-      fetch('ranges.json').then(r => r.json()),
-    ]);
-    APEX = Object.assign({ markers }, config);
-    APEX.ranges = ranges;
-    log('Report config loaded (' + Object.keys(markers).length + ' markers · '
-        + APEX.APEX_THYROID_CATEGORIES.length + ' thyroid + '
-        + APEX.APEX_COMPUTED_PATTERNS.length + ' computed patterns · '
-        + Object.keys(ranges.markers).length + ' ranges).');
+    [config, ranges] = await Promise.all([fetchJson('apex-data.json'), fetchJson('ranges.json')]);
   } catch (e) {
-    log('Report config not loaded (' + e.message + ') — needed for the Functional Report.', 'err');
+    log('Report config not loaded (' + e.message + ') — nothing can be built.', 'err');
+    return;
+  }
+
+  let markers = null;
+  try {
+    markers = await fetchJson('apex-markers.json');
+  } catch (e) {
+    markers = null;
+  }
+
+  APEX = Object.assign({ markers: markers || {} }, config);
+  APEX.ranges = ranges;
+  APEX.markersMissing = !markers;
+
+  log('Report config loaded (' + Object.keys(APEX.markers).length + ' markers · '
+      + APEX.APEX_THYROID_CATEGORIES.length + ' thyroid + '
+      + APEX.APEX_COMPUTED_PATTERNS.length + ' computed patterns · '
+      + Object.keys(ranges.markers).length + ' ranges).');
+
+  if (APEX.markersMissing) {
+    // Don't quietly ship a clinical report with its cause analysis hollowed
+    // out — say so up front and skip that one step.
+    const note = $('configNote');
+    note.style.display = 'block';
+    note.textContent = 'apex-markers.json is missing, so the Functional Analysis Report is '
+      + 'switched off. The populated sheet, the styled sheet PDF and the trend tracker all '
+      + 'still save to your Drive.';
+    log('apex-markers.json missing — Functional Report will be skipped.', 'err');
   }
 }
 
@@ -542,6 +577,12 @@ async function createPopulatedSheet(parsed, name, folder) {
 function buildReportHtml(parsed) {
   if (typeof ApexReport === 'undefined') throw new Error('apex-report.js not loaded');
   if (!APEX || !APEX.ranges) throw new Error('Report config (apex-data.json / ranges.json) not loaded');
+  if (APEX.markersMissing) {
+    // The report renders without apex-markers.json, but every "possible cause"
+    // reads "See clinical patterns" and the cross-cause cards vanish. That is a
+    // clinical document, so refuse rather than hand over a hollowed-out one.
+    throw new Error('apex-markers.json is missing — cause analysis would be blank');
+  }
   return ApexReport.build(parsed.patient, parsed.results, APEX.ranges, APEX);
 }
 // PORTED: longitudinal per-patient trend sheet via apex-trend.js (ApexTrend.gs
@@ -573,15 +614,31 @@ async function run() {
     const sheetPdf = await exportSheetPdf(spreadsheetId, gid, sheetName);
     await uploadToDrive(sheetPdf, sheetName + '.pdf', folder.id);
 
-    log('Rendering Functional Report…');
-    const reportHtml = buildReportHtml(parsed);
-    const reportPdf = await renderReportPdf(reportHtml, parsed.patient && parsed.patient.name);
-    await uploadToDrive(reportPdf, (parsed.patient.name || 'Patient') + ' — Functional Analysis Report.pdf', folder.id);
+    // The report and the trend tracker are both non-blocking: the sheet and its
+    // PDF are already safely in Drive, so a failure here must not lose them.
+    const skipped = [];
 
-    // Trend tracker is non-blocking (matches the Apps Script app) — still a stub.
-    try { await updateTrends(parsed, folder); } catch (e) { log('Trends update skipped: ' + e.message); }
+    try {
+      log('Rendering Functional Report…');
+      const reportHtml = buildReportHtml(parsed);
+      const reportPdf = await renderReportPdf(reportHtml, parsed.patient && parsed.patient.name);
+      await uploadToDrive(reportPdf, (parsed.patient.name || 'Patient') + ' — Functional Analysis Report.pdf', folder.id);
+    } catch (e) {
+      skipped.push('Functional Report');
+      log('Functional Report skipped: ' + e.message, 'err');
+    }
 
-    log('Done — saved to your Drive: ' + folder.name, 'ok');
+    try {
+      log('Updating trend tracker…');
+      await updateTrends(parsed, folder);
+    } catch (e) {
+      skipped.push('trend tracker');
+      log('Trends update skipped: ' + e.message, 'err');
+    }
+
+    log('Saved to your Drive: ' + folder.name
+        + (skipped.length ? ' — without the ' + skipped.join(' or the ') + '.' : ''),
+        skipped.length ? 'err' : 'ok');
   } catch (e) {
     log(e.message, 'err');
   } finally {
