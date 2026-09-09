@@ -80,6 +80,23 @@
     .result a { color:inherit; font-weight:600; text-decoration:underline; }
     .note { background:#fffbeb; color:#92400e; border:1px solid #fde68a;
             border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:16px; display:none; }
+    .patient-edit { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:16px;
+                    padding-bottom:16px; border-bottom:1px solid var(--border); }
+    .patient-edit label { font-size:11px; text-transform:uppercase; letter-spacing:.4px;
+                           color:var(--muted); font-weight:700; display:flex; flex-direction:column; gap:4px; }
+    .patient-edit input, .patient-edit select {
+      font-size:14px; font-weight:500; color:var(--text); text-transform:none; letter-spacing:normal;
+      padding:8px 10px; border:1px solid var(--border); border-radius:8px; min-height:36px;
+    }
+    .patient-edit input:invalid { border-color:#ef4444; }
+    .review-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:12px; }
+    .review-grid .section { border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .review-grid .section-head { background:var(--bg); color:var(--muted); font-size:11px;
+      text-transform:uppercase; letter-spacing:.4px; font-weight:700; padding:8px 10px; }
+    .review-grid .test-row { display:flex; justify-content:space-between; gap:8px;
+      padding:6px 10px; font-size:13px; border-top:1px solid var(--border); }
+    .review-grid .test-row span:last-child { font-weight:600; }
+    .review-empty { color:var(--muted); font-size:13px; grid-column:1/-1; }
   </style>
 </head>
 <body>
@@ -110,10 +127,32 @@
       <input id="file" type="file" accept=".pdf" hidden />
     </div>
 
+    <!-- ── Review ───────────────────────────────────────────────────── -->
+    <!-- Patient name/date/age/sex are editable — this is the field that has
+         actually misparsed in the wild (title case, hyphenated surnames,
+         addresses that look like "Word, Word"). The marker grid is read-only,
+         same as index.html: no history of those needing hand correction. -->
+    <div class="card" id="reviewCard" hidden>
+      <div class="label">Review before sending</div>
+      <div class="patient-edit">
+        <label>Name<input id="editName" type="text" placeholder="Not found — type it in"></label>
+        <label>Date<input id="editDate" type="text" placeholder="MM/DD/YYYY"></label>
+        <label>Age<input id="editAge" type="text" placeholder="—" style="width:64px;"></label>
+        <label>Sex
+          <select id="editSex">
+            <option value="">—</option>
+            <option value="F">Female</option>
+            <option value="M">Male</option>
+          </select>
+        </label>
+      </div>
+      <div id="reviewGrid" class="review-grid"></div>
+    </div>
+
     <!-- ── Action ───────────────────────────────────────────────────── -->
     <div class="card">
       <div class="row">
-        <button id="goBtn" class="go" disabled>Generate &amp; save to my Drive</button>
+        <button id="goBtn" class="go" disabled>Send to Sheets</button>
       </div>
       <!-- The old Apps Script app popped a whole new tab with a big green
            checkmark on success. This one only wrote to the Activity log below,
@@ -622,6 +661,10 @@ async function run() {
     $('goBtn').disabled = true;
     await ensureToken();
     const parsed = parsedData || await parsePdf(pickedFile);
+    // Only trust the Review inputs if they were actually populated for this
+    // parse — if the initial parse failed and this is the fallback re-parse,
+    // the (hidden) fields are stale/empty and must not overwrite real values.
+    if (!$('reviewCard').hidden) applyReviewEdits(parsed);
     log('Using ' + parsed.updates.length + ' extracted values'
         + (parsed.patient.name ? ' for ' + parsed.patient.name : ''));
 
@@ -714,23 +757,75 @@ function wire() {
   loadApexConfig();
   refreshUI();
 }
+// Fill the editable patient fields + read-only marker grid from a parsePdf()
+// result. Mirrors index.html's patient banner + results grid — the one thing
+// that gets a live input instead of a static span is patient identity, since
+// that's the field that has actually come back wrong (title case, hyphenated
+// surnames, an address line shaped like "Word, Word").
+function showReview(parsed) {
+  const p = parsed.patient;
+  $('editName').value = p.name || '';
+  $('editDate').value = p.date || '';
+  $('editAge').value  = p.age  || '';
+  $('editSex').value  = p.sex === 'F' || p.sex === 'M' ? p.sex : '';
+
+  const sections = {};
+  for (const [name, data] of Object.entries(parsed.results)) {
+    (sections[data.section] = sections[data.section] || []).push({ name, ...data });
+  }
+  const grid = $('reviewGrid');
+  if (!Object.keys(sections).length) {
+    grid.innerHTML = '<div class="review-empty">No matching tests found in this PDF.</div>';
+  } else {
+    grid.innerHTML = Object.entries(sections).map(([sectionName, tests]) => {
+      tests.sort((a, b) => a.row - b.row);
+      return '<div class="section"><div class="section-head">' + esc(sectionName) + '</div>' +
+        tests.map(t => '<div class="test-row"><span>' + esc(t.name) + '</span><span>' + esc(t.value) + '</span></div>').join('') +
+        '</div>';
+    }).join('');
+  }
+  $('reviewCard').hidden = false;
+}
+
+// Read the (possibly hand-corrected) patient fields back into `parsed` right
+// before sending. The B2/B3/E2/I2 cells get rebuilt from the live inputs;
+// every other cell (the D-column marker values) is left exactly as parsed.
+function applyReviewEdits(parsed) {
+  const patient = {
+    name: $('editName').value.trim(),
+    date: $('editDate').value.trim(),
+    age:  $('editAge').value.trim(),
+    sex:  $('editSex').value.trim(),
+  };
+  const markerUpdates = parsed.updates.filter(u => !['B2', 'B3', 'E2', 'I2'].includes(u.cell));
+  const patientUpdates = [];
+  if (patient.name) patientUpdates.push({ cell: 'B2', value: patient.name });
+  if (patient.date) patientUpdates.push({ cell: 'B3', value: patient.date });
+  if (patient.age)  patientUpdates.push({ cell: 'E2', value: patient.age });
+  if (patient.sex)  patientUpdates.push({ cell: 'I2', value: patient.sex });
+  parsed.patient = Object.assign({}, parsed.patient, patient);
+  parsed.updates = patientUpdates.concat(markerUpdates);
+}
+
 async function setFile(file) {
   if (!file) return;
   pickedFile = file;
   parsedData = null;
+  $('reviewCard').hidden = true;
   $('drop').classList.add('has');
   $('drop').textContent = file.name;
   refreshUI();
-  // Preview the extraction right away — works with NO Google connection, so it
-  // proves parsePdf() on its own.
+  // Parse right away — works with NO Google connection, so it proves
+  // parsePdf() on its own before anything touches Drive.
   try {
     log('Parsing ' + file.name + '…');
     parsedData = await parsePdf(file);
     const p = parsedData.patient;
     log('Parsed ' + parsedData.updates.length + ' values'
-        + (p.name ? ' · ' + p.name : '')
+        + (p.name ? ' · ' + p.name : ' · name not found, check Review below')
         + (p.dob ? ' · DOB ' + p.dob : '')
         + ' · ' + parsedData.numPages + ' pages', 'ok');
+    showReview(parsedData);
   } catch (e) {
     log('Parse failed: ' + e.message, 'err');
   }
